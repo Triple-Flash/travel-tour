@@ -1,6 +1,7 @@
 "use client";
 
-import { signInWithGoogle } from "@/actions/auth";
+import { signInWithGoogle } from "@/app/(auth)/login/actions";
+import { Compass } from "lucide-react";
 
 export function GoogleSignInButton() {
   return (
@@ -8,21 +9,32 @@ export function GoogleSignInButton() {
       <button
         id="google-signin-btn"
         type="submit"
-        style={styles.googleBtn}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = "translateY(-2px)";
-          e.currentTarget.style.boxShadow = "0 12px 40px rgba(99,102,241,0.45)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = "0 4px 20px rgba(99,102,241,0.25)";
+        className="group relative flex w-full items-center justify-center gap-3 rounded-2xl border border-white/15 px-6 py-4 text-[15px] font-semibold text-white cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(6,182,212,0.35)] overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, rgba(6,182,212,0.9), rgba(139,92,246,0.9))",
         }}
       >
+        {/* Shimmer overlay */}
+        <div
+          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+          style={{
+            background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%)",
+            backgroundSize: "200% 100%",
+            animation: "shimmer 2s linear infinite",
+          }}
+        />
         {/* Google "G" logo */}
         <svg
-          style={styles.googleLogo}
+          className="relative z-10 flex-shrink-0"
+          width="20"
+          height="20"
           viewBox="0 0 24 24"
           xmlns="http://www.w3.org/2000/svg"
+          style={{
+            background: "#fff",
+            borderRadius: "50%",
+            padding: "2px",
+          }}
         >
           <path
             fill="#4285F4"
@@ -41,37 +53,8 @@ export function GoogleSignInButton() {
             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
           />
         </svg>
-        Continue with Google
+        <span className="relative z-10">Đăng nhập với Google</span>
       </button>
     </form>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  googleBtn: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "12px",
-    width: "100%",
-    padding: "14px 20px",
-    borderRadius: "14px",
-    border: "1px solid rgba(255,255,255,0.15)",
-    background: "linear-gradient(135deg, rgba(99,102,241,0.9), rgba(139,92,246,0.9))",
-    color: "#fff",
-    fontSize: "15px",
-    fontWeight: 600,
-    cursor: "pointer",
-    transition: "transform 0.2s ease, box-shadow 0.2s ease",
-    boxShadow: "0 4px 20px rgba(99,102,241,0.25)",
-    letterSpacing: "0.1px",
-  },
-  googleLogo: {
-    width: "20px",
-    height: "20px",
-    flexShrink: 0,
-    background: "#fff",
-    borderRadius: "50%",
-    padding: "2px",
-  },
-};

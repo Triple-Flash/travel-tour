@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServerClient } from "@/lib/supabase";
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -8,10 +8,17 @@ export async function GET(request: Request) {
   const next = searchParams.get("next") ?? "/dashboard";
 
   if (code) {
-    const supabase = await createClient();
+    const supabase = await createServerClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      const { syncUserFromAuth } = await import("@/data/mutations/users");
+      await syncUserFromAuth();
+      
+      const { getSession } = await import("@/lib/auth");
+      const sessionUser = await getSession();
+      
+      const redirectPath = sessionUser?.role === "admin" ? "/dashboard" : "/";
+      return NextResponse.redirect(`${origin}${redirectPath}`);
     }
   }
 

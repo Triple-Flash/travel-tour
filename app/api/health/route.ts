@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma";
+import { createServerClient } from "@/lib/supabase";
+import { db } from "@/lib/db";
 
 export async function GET() {
   const results: Record<string, { ok: boolean; message: string }> = {};
 
   // ── 1. Supabase connection check ────────────────────────────────────────
   try {
-    const supabase = await createClient();
+    const supabase = await createServerClient();
     const { error } = await supabase.auth.getSession();
     if (error) throw error;
     results.supabase = { ok: true, message: "Supabase connected ✓" };
@@ -20,7 +20,7 @@ export async function GET() {
 
   // ── 2. Prisma / PostgreSQL connection check ──────────────────────────────
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await db.$queryRaw`SELECT 1`;
     results.prisma = { ok: true, message: "Prisma (PostgreSQL) connected ✓" };
   } catch (err) {
     results.prisma = {

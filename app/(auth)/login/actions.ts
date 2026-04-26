@@ -1,11 +1,16 @@
 "use server";
 
+/**
+ * app/(auth)/login/actions.ts
+ * Server Actions for authentication flows.
+ * Calls Supabase auth through lib/supabase — NOT through the DAL (auth is not a DB domain).
+ */
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { headers } from "next/headers";
+import { createServerClient } from "@/lib/supabase";
 
-export async function signInWithGoogle() {
-  const supabase = await createClient();
+export async function signInWithGoogle(): Promise<void> {
+  const supabase = await createServerClient();
   const headersList = await headers();
   const origin = headersList.get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL!;
 
@@ -29,8 +34,8 @@ export async function signInWithGoogle() {
   }
 }
 
-export async function signOut() {
-  const supabase = await createClient();
+export async function signOut(): Promise<void> {
+  const supabase = await createServerClient();
   await supabase.auth.signOut();
   redirect("/login");
 }

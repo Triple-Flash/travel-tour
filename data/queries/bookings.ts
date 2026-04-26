@@ -1,0 +1,183 @@
+/**
+ * data/queries/bookings.ts
+ * Pure read functions for the `bookings` domain.
+ * Always user-scoped — requireAuth() is called at the top.
+ */
+import { db } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
+import { NotFoundError, ForbiddenError } from "@/data/errors";
+
+// ─── Plain TS types ───────────────────────────────────────────────────────────
+
+export interface Booking {
+  id: string;
+  user_id: string | null;
+  tour_id: string | null;
+  booking_date: Date | null;
+  number_of_people: number;
+  total_price: number;
+  status: string | null;
+  tour: {
+    id: string;
+    title: string;
+    price: number;
+    duration: number;
+    images: { image_url: string }[];
+    destination: { name: string; country: string } | null;
+  } | null;
+  payment: {
+    id: string;
+    payment_method: string;
+    amount: number;
+    payment_status: string | null;
+    payment_date: Date | null;
+  } | null;
+}
+
+// ─── Queries ─────────────────────────────────────────────────────────────────
+
+/** Returns all bookings for the current authenticated user. */
+export async function getMyBookings(): Promise<Booking[]> {
+  const user = await requireAuth();
+
+  const bookings = await db.bookings.findMany({
+    where: { user_id: user.id },
+    orderBy: { booking_date: "desc" },
+    select: {
+      id: true,
+      user_id: true,
+      tour_id: true,
+      booking_date: true,
+      number_of_people: true,
+      total_price: true,
+      status: true,
+      tours: {
+        select: {
+          id: true,
+          title: true,
+          price: true,
+          duration: true,
+          tour_images: { select: { image_url: true }, take: 1 },
+          destinations: { select: { name: true, country: true } },
+        },
+      },
+      payments: {
+        select: {
+          id: true,
+          payment_method: true,
+          amount: true,
+          payment_status: true,
+          payment_date: true,
+        },
+      },
+    },
+  });
+
+  return bookings.map(mapBooking);
+}
+
+/** Returns a single booking by ID, ensuring it belongs to the current user. */
+export async function getBookingById(id: string): Promise<Booking> {
+  const user = await requireAuth();
+
+  const booking = await db.bookings.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      user_id: true,
+      tour_id: true,
+      booking_date: true,
+      number_of_people: true,
+      total_price: true,
+      status: true,
+      tours: {
+        select: {
+          id: true,
+          title: true,
+          price: true,
+          duration: true,
+          tour_images: { select: { image_url: true }, take: 1 },
+          destinations: { select: { name: true, country: true } },
+        },
+      },
+      payments: {
+        select: {
+          id: true,
+          payment_method: true,
+          amount: true,
+          payment_status: true,
+          payment_date: true,
+        },
+      },
+    },
+  });
+
+  if (!booking) throw new NotFoundError("Booking", id);
+  if (booking.user_id !== user.id && user.role !== "admin") {
+    throw new ForbiddenError();
+  }
+
+  return mapBooking(booking);
+}
+
+// ─── Private mapper ───────────────────────────────────────────────────────────
+
+// Decimal lives inside the Prisma namespace in the generated output.
+import type { Prisma } from "@/lib/generated/prisma";
+type Decimal = Prisma.Decimal;
+
+type RawBooking = {
+  id: string;
+  user_id: string | null;
+  tour_id: string | null;
+  booking_date: Date | null;
+  number_of_people: number;
+  total_price: Decimal;
+  status: string | null;
+  tours: {
+    id: string;
+    title: string;
+    price: Decimal;
+    duration: number;
+    tour_images: { image_url: string }[];
+    destinations: { name: string; country: string } | null;
+  } | null;
+  payments: {
+    id: string;
+    payment_method: string;
+    amount: Decimal;
+    payment_status: string | null;
+    payment_date: Date | null;
+  } | null;
+};
+
+function mapBooking(b: RawBooking): Booking {
+  return {
+    id: b.id,
+    user_id: b.user_id,
+    tour_id: b.tour_id,
+    booking_date: b.booking_date,
+    number_of_people: b.number_of_people,
+    total_price: Number(b.total_price),
+    status: b.status,
+    tour: b.tours
+      ? {
+          id: b.tours.id,
+          title: b.tours.title,
+          price: Number(b.tours.price),
+          duration: b.tours.duration,
+          images: b.tours.tour_images,
+          destination: b.tours.destinations ?? null,
+        }
+      : null,
+    payment: b.payments
+      ? {
+          id: b.payments.id,
+          payment_method: b.payments.payment_method,
+          amount: Number(b.payments.amount),
+          payment_status: b.payments.payment_status,
+          payment_date: b.payments.payment_date,
+        }
+      : null,
+  };
+}
