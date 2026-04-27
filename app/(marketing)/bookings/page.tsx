@@ -6,6 +6,7 @@ import { MapPin, Calendar, Clock, User, ArrowRight, CreditCard, CheckCircle2, XC
 import Image from "next/image";
 import Link from "next/link";
 import { getMyBookings } from "@/data/queries/bookings";
+import BookingReviewForm from "./BookingReviewForm";
 
 function StatusBadge({ status }: { status: string | null }) {
   if (status === "confirmed") {
@@ -178,7 +179,7 @@ export default async function BookingsPage() {
                           </div>
                         </div>
                         
-                        <div className="flex w-full sm:w-auto gap-3">
+                        <div className="flex w-full flex-col gap-3 sm:w-auto">
                           {booking.status === 'pending' && booking.payment?.payment_status === 'pending' && (
                             <Link
                               href={`/checkout/${booking.tour_id}`}
@@ -186,6 +187,12 @@ export default async function BookingsPage() {
                             >
                               Thanh Toán Lại
                             </Link>
+                          )}
+                          {booking.status === 'confirmed' && booking.payment?.payment_status === 'completed' && booking.tour_id && (
+                            <BookingReviewForm
+                              tourId={booking.tour_id}
+                              existingReview={booking.user_review}
+                            />
                           )}
                           <Link
                             href={`/tours/${booking.tour_id}`}

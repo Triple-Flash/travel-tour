@@ -5,7 +5,7 @@
 import { z } from "zod";
 
 export const CreateReviewSchema = z.object({
-  tour_id: z.string().uuid("Invalid tour ID"),
+  tour_id: z.string().trim().min(1, "Invalid tour ID"),
   rating: z
     .number()
     .int()
@@ -17,7 +17,7 @@ export const CreateReviewSchema = z.object({
 export type CreateReviewInput = z.infer<typeof CreateReviewSchema>;
 
 export const UpdateReviewSchema = CreateReviewSchema.partial().extend({
-  id: z.string().uuid("Invalid review ID"),
+  id: z.string().trim().min(1, "Invalid review ID"),
 });
 
 export type UpdateReviewInput = z.infer<typeof UpdateReviewSchema>;

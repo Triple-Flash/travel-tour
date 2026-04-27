@@ -22,13 +22,24 @@ export async function updateMyProfile(input: UpdateUserInput): Promise<UserProfi
     throw new ValidationError(parsed.error.issues.map((i) => i.message).join(", "));
   }
 
-  const updated = await db.users.update({
+  const updated = await db.users.upsert({
     where: { id: user.id },
-    data: {
-      ...(parsed.data.full_name !== undefined && { full_name: parsed.data.full_name }),
+    update: {
+      ...(parsed.data.full_name !== undefined && {
+        full_name: parsed.data.full_name,
+      }),
       ...(parsed.data.phone_number !== undefined && {
         phone_number: parsed.data.phone_number,
       }),
+    },
+    create: {
+      id: user.id,
+      email: user.email,
+      full_name: parsed.data.full_name ?? user.full_name,
+      phone_number:
+        parsed.data.phone_number !== undefined ? parsed.data.phone_number : null,
+      password_hash: "OAUTH_GOOGLE",
+      role: user.role,
     },
     select: {
       id: true,

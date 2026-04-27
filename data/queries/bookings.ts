@@ -32,6 +32,11 @@ export interface Booking {
     payment_status: string | null;
     payment_date: Date | null;
   } | null;
+  user_review: {
+    id: string;
+    rating: number | null;
+    comment: string | null;
+  } | null;
 }
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
@@ -59,6 +64,15 @@ export async function getMyBookings(): Promise<Booking[]> {
           duration: true,
           tour_images: { select: { image_url: true }, take: 1 },
           destinations: { select: { name: true, country: true } },
+          reviews: {
+            where: { user_id: user.id },
+            take: 1,
+            select: {
+              id: true,
+              rating: true,
+              comment: true,
+            },
+          },
         },
       },
       payments: {
@@ -98,6 +112,15 @@ export async function getBookingById(id: string): Promise<Booking> {
           duration: true,
           tour_images: { select: { image_url: true }, take: 1 },
           destinations: { select: { name: true, country: true } },
+          reviews: {
+            where: { user_id: user.id },
+            take: 1,
+            select: {
+              id: true,
+              rating: true,
+              comment: true,
+            },
+          },
         },
       },
       payments: {
@@ -118,6 +141,66 @@ export async function getBookingById(id: string): Promise<Booking> {
   }
 
   return mapBooking(booking);
+}
+
+/** Returns the newest successfully paid booking for the current user. */
+export async function getLatestPaidBooking(): Promise<Booking | null> {
+  const user = await requireAuth();
+
+  const payment = await db.payments.findFirst({
+    where: {
+      payment_status: "completed",
+      bookings: {
+        user_id: user.id,
+      },
+    },
+    orderBy: { payment_date: "desc" },
+    select: {
+      bookings: {
+        select: {
+          id: true,
+          user_id: true,
+          tour_id: true,
+          booking_date: true,
+          number_of_people: true,
+          total_price: true,
+          status: true,
+          tours: {
+            select: {
+              id: true,
+              title: true,
+              price: true,
+              duration: true,
+              tour_images: { select: { image_url: true }, take: 1 },
+              destinations: { select: { name: true, country: true } },
+              reviews: {
+                where: { user_id: user.id },
+                take: 1,
+                select: {
+                  id: true,
+                  rating: true,
+                  comment: true,
+                },
+              },
+            },
+          },
+          payments: {
+            select: {
+              id: true,
+              payment_method: true,
+              amount: true,
+              payment_status: true,
+              payment_date: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!payment?.bookings) return null;
+
+  return mapBooking(payment.bookings);
 }
 
 // ─── Private mapper ───────────────────────────────────────────────────────────
@@ -141,6 +224,11 @@ type RawBooking = {
     duration: number;
     tour_images: { image_url: string }[];
     destinations: { name: string; country: string } | null;
+    reviews: {
+      id: string;
+      rating: number | null;
+      comment: string | null;
+    }[];
   } | null;
   payments: {
     id: string;
@@ -177,6 +265,13 @@ function mapBooking(b: RawBooking): Booking {
           amount: Number(b.payments.amount),
           payment_status: b.payments.payment_status,
           payment_date: b.payments.payment_date,
+        }
+      : null,
+    user_review: b.tours?.reviews[0]
+      ? {
+          id: b.tours.reviews[0].id,
+          rating: b.tours.reviews[0].rating,
+          comment: b.tours.reviews[0].comment,
         }
       : null,
   };

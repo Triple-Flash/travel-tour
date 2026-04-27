@@ -34,6 +34,21 @@ export async function createReview(
   });
   if (!tour) throw new NotFoundError("Tour", tour_id);
 
+  const successfulBooking = await db.bookings.findFirst({
+    where: {
+      user_id: user.id,
+      tour_id,
+      status: "confirmed",
+      payments: {
+        payment_status: "completed",
+      },
+    },
+    select: { id: true },
+  });
+  if (!successfulBooking) {
+    throw new ForbiddenError("You can only review tours you have paid for successfully.");
+  }
+
   // Prevent duplicate reviews
   const existing = await db.reviews.findFirst({
     where: { user_id: user.id, tour_id },
