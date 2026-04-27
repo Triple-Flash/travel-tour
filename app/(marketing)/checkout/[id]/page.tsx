@@ -7,53 +7,7 @@ import Link from "next/link";
 import type { TourDetail } from "@/data/queries/tours";
 import CheckoutForm from "./CheckoutForm";
 
-const fallbackTours: TourDetail[] = [
-  {
-    id: "halong-cruise",
-    title: "Du Thuyền Vịnh Hạ Long 3N2Đ",
-    description: "Khám phá kỳ quan thiên nhiên thế giới trên du thuyền 5 sao đẳng cấp.",
-    price: 4500000,
-    duration: 3,
-    max_capacity: 12,
-    created_at: new Date(),
-    destination: { id: "halong", name: "Vịnh Hạ Long", country: "Quảng Ninh", image_url: "/images/halong.png" },
-    images: [{ id: "1", image_url: "/images/halong.png" }],
-    avg_rating: 4.9,
-    review_count: 324,
-    reviews: [],
-  },
-  {
-    id: "sapa-trek",
-    title: "Trekking Sa Pa & Bản Làng",
-    description: "Chinh phục đỉnh Fansipan - Nóc nhà Đông Dương, và trải nghiệm cuộc sống chân thực.",
-    price: 3200000,
-    duration: 4,
-    max_capacity: 10,
-    created_at: new Date(),
-    destination: { id: "sapa", name: "Sa Pa", country: "Lào Cai", image_url: "/images/sapa.png" },
-    images: [{ id: "1", image_url: "/images/sapa.png" }],
-    avg_rating: 4.8,
-    review_count: 218,
-    reviews: [],
-  },
-];
-
-async function getTourData(id: string): Promise<TourDetail> {
-  try {
-    return await getTourById(id);
-  } catch (err) {
-    const fallback = fallbackTours.find((t) => t.id === id);
-    if (fallback) return fallback;
-
-    return {
-      ...fallbackTours[0],
-      id,
-      title: "Hành Trình Khám Phá Kỳ Thú",
-      description: "Đang xem trước giao diện thanh toán.",
-      images: [],
-    };
-  }
-}
+import { notFound } from "next/navigation";
 
 export default async function CheckoutPage({ 
   params, 
@@ -65,7 +19,12 @@ export default async function CheckoutPage({
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
 
-  const tour = await getTourData(resolvedParams.id);
+  let tour;
+  try {
+    tour = await getTourById(resolvedParams.id);
+  } catch {
+    notFound();
+  }
   const session = await getSession();
 
   const image = tour.destination?.image_url || tour.images[0]?.image_url || "/images/halong.png";

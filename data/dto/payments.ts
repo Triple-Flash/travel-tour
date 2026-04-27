@@ -5,7 +5,7 @@
 import { z } from "zod";
 
 export const CreatePayosPaymentSchema = z.object({
-  tour_id: z.string().uuid("Invalid tour ID"),
+  tour_id: z.string().length(36, "Invalid tour ID"),
   number_of_people: z.number().int().positive("Must book at least 1 person"),
   total_price: z
     .number()

@@ -37,5 +37,5 @@ function resolveError(err: unknown): string {
   if (err instanceof NotFoundError) return err.message;
   if (err instanceof ForbiddenError) return err.message;
   console.error("[CheckoutAction]", err);
-  return "Đã xảy ra lỗi. Vui lòng thử lại.";
+  return (err as Error)?.message || "Đã xảy ra lỗi. Vui lòng thử lại.";
 }

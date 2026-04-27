@@ -112,6 +112,11 @@ export default function Navbar({
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem className="cursor-pointer rounded-lg p-0 focus:bg-white/10">
+                    <Link href="/bookings" className="block w-full px-3 py-2 text-[14px] font-medium text-white transition-colors">
+                      Lịch sử tour
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer rounded-lg p-0 focus:bg-white/10">
                     <a href="#plan" className="block w-full px-3 py-2 text-[14px] font-medium text-white transition-colors">
                       Lên Kế Hoạch
                     </a>
@@ -196,6 +201,12 @@ export default function Navbar({
                   >
                     Hồ Sơ
                   </Link>
+                  <Link
+                    href="/bookings"
+                    className="mb-2 flex h-10 w-full items-center justify-center rounded-xl bg-white/5 text-sm font-semibold text-white cursor-pointer transition-colors duration-200 hover:bg-white/10"
+                  >
+                    Chỗ đặt của tôi
+                  </Link>
                   <form action={signOut}>
                     <button
                       type="submit"
@@ -204,6 +215,7 @@ export default function Navbar({
                       Đăng Xuất
                     </button>
                   </form>
+                  
                 </div>
               ) : (
                 <div className="mt-2 px-3 pt-4 border-t border-white/10">

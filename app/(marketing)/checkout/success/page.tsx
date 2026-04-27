@@ -3,15 +3,30 @@ import { getSession } from "@/lib/auth";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import { CheckCircle2, ArrowRight, Home } from "lucide-react";
+import { payos } from "@/lib/payos";
+import { confirmPayosPayment } from "@/data/mutations/payments";
 
 export default async function CheckoutSuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ orderCode?: string }>;
+  searchParams: Promise<{ orderCode?: string; status?: string; cancel?: string; id?: string }>;
 }) {
   const resolvedSearchParams = await searchParams;
   const session = await getSession();
   const orderCode = resolvedSearchParams.orderCode || "N/A";
+
+  // Double check status with PayOS (in case webhook was missed/delayed)
+  if (orderCode !== "N/A" && resolvedSearchParams.status === "PAID" && resolvedSearchParams.cancel === "false") {
+    try {
+      const numericOrderCode = Number(orderCode);
+      const paymentInfo = await payos.paymentRequests.get(numericOrderCode);
+      if (paymentInfo.status === "PAID") {
+        await confirmPayosPayment(numericOrderCode, resolvedSearchParams.id);
+      }
+    } catch (err) {
+      console.error("Error verifying PayOS status on success page:", err);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-cyan-500/30">
