@@ -116,7 +116,7 @@ export default function DestinationsSection({ destinations }: DestinationsSectio
               <a
                 key={d.id}
                 id={`dest-${d.id}`}
-                href="#"
+                href={`/destinations/${d.id}`}
                 className={`group relative block cursor-pointer overflow-hidden rounded-[2rem] bg-zinc-900 transition-all duration-700 hover:shadow-[0_20px_80px_rgba(0,0,0,0.6)] ${bentoClass}`}
               >
                 <Image

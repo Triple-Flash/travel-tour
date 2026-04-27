@@ -105,9 +105,10 @@ export default function ToursSection({ tours }: ToursSectionProps) {
             const image = tour.destination?.image_url || tour.images[0]?.image_url || "/images/halong.png";
 
             return (
-              <div
+              <a
+                href={`/tours/${tour.id}`}
                 key={tour.id}
-                className="group relative h-[460px] w-full cursor-pointer overflow-hidden rounded-[2rem] bg-zinc-900 transition-all duration-500 hover:shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
+                className="group relative h-[460px] w-full cursor-pointer overflow-hidden rounded-[2rem] bg-zinc-900 transition-all duration-500 hover:shadow-[0_20px_60px_rgba(0,0,0,0.6)] block"
               >
                 {/* Background Image */}
                 <Image
@@ -173,18 +174,17 @@ export default function ToursSection({ tours }: ToursSectionProps) {
                       </div>
                     </div>
 
-                    <a
-                      href="#"
+                    <div
                       className="flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-md transition-all duration-300 group-hover:scale-110 group-hover:bg-white group-hover:text-black group-hover:shadow-[0_0_20px_rgba(255,255,255,0.4)]"
                       style={{
                         boxShadow: `0 4px 20px ${accent}40`,
                       }}
                     >
                       <ArrowRight size={18} />
-                    </a>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </a>
             );
           })}
         </div>

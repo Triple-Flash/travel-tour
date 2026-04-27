@@ -106,12 +106,17 @@ export default function Navbar({
                     <p className="truncate text-xs text-white/50">{user.email}</p>
                   </div>
                   <DropdownMenuSeparator className="my-1 bg-white/10" />
-                  <DropdownMenuItem asChild className="cursor-pointer rounded-lg p-0 focus:bg-white/10">
+                  <DropdownMenuItem className="cursor-pointer rounded-lg p-0 focus:bg-white/10">
+                    <Link href="/profile" className="block w-full px-3 py-2 text-[14px] font-medium text-white transition-colors">
+                      Hồ Sơ
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="cursor-pointer rounded-lg p-0 focus:bg-white/10">
                     <a href="#plan" className="block w-full px-3 py-2 text-[14px] font-medium text-white transition-colors">
                       Lên Kế Hoạch
                     </a>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="mt-1 cursor-pointer rounded-lg p-0 focus:bg-red-500/10 focus:text-red-400">
+                  <DropdownMenuItem className="mt-1 cursor-pointer rounded-lg p-0 focus:bg-red-500/10 focus:text-red-400">
                     <form action={signOut} className="w-full">
                       <button type="submit" className="w-full px-3 py-2 text-left text-[14px] font-medium text-red-400 transition-colors">
                         Đăng Xuất
@@ -185,6 +190,12 @@ export default function Navbar({
                       <span className="text-[12px] text-white/50 truncate">{user.email}</span>
                     </div>
                   </div>
+                  <Link
+                    href="/profile"
+                    className="mb-2 flex h-10 w-full items-center justify-center rounded-xl bg-white/5 text-sm font-semibold text-white cursor-pointer transition-colors duration-200 hover:bg-white/10"
+                  >
+                    Hồ Sơ
+                  </Link>
                   <form action={signOut}>
                     <button
                       type="submit"

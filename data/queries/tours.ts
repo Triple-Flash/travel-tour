@@ -173,3 +173,114 @@ export async function getTourById(id: string): Promise<TourDetail> {
     })),
   };
 }
+
+// ─── Search Filters ──────────────────────────────────────────────────────────
+
+export interface SearchToursFilters {
+  destination?: string;      // Destination name or keyword (case-insensitive)
+  minPrice?: number;
+  maxPrice?: number;
+  minDuration?: number;
+  maxDuration?: number;
+  minRating?: number;
+  guests?: number;           // Filter by max_capacity >= guests
+  sortBy?: "price_asc" | "price_desc" | "rating" | "newest";
+}
+
+/** Searches tours with multiple filters. Public — no auth required. */
+export async function searchTours(filters: SearchToursFilters): Promise<TourSummary[]> {
+  // Build Prisma where clause
+  const where: Record<string, unknown> = {};
+
+  if (filters.destination) {
+    where.destinations = {
+      OR: [
+        { name: { contains: filters.destination, mode: "insensitive" } },
+        { country: { contains: filters.destination, mode: "insensitive" } },
+      ],
+    };
+  }
+
+  if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
+    where.price = {};
+    if (filters.minPrice !== undefined) (where.price as Record<string, unknown>).gte = filters.minPrice;
+    if (filters.maxPrice !== undefined) (where.price as Record<string, unknown>).lte = filters.maxPrice;
+  }
+
+  if (filters.minDuration !== undefined || filters.maxDuration !== undefined) {
+    where.duration = {};
+    if (filters.minDuration !== undefined) (where.duration as Record<string, unknown>).gte = filters.minDuration;
+    if (filters.maxDuration !== undefined) (where.duration as Record<string, unknown>).lte = filters.maxDuration;
+  }
+
+  if (filters.guests !== undefined) {
+    where.max_capacity = { gte: filters.guests };
+  }
+
+  // Determine sort order
+  let orderBy: Record<string, string>;
+  switch (filters.sortBy) {
+    case "price_asc":
+      orderBy = { price: "asc" };
+      break;
+    case "price_desc":
+      orderBy = { price: "desc" };
+      break;
+    case "newest":
+      orderBy = { created_at: "desc" };
+      break;
+    default:
+      orderBy = { created_at: "desc" };
+  }
+
+  const tours = await db.tours.findMany({
+    where,
+    orderBy,
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      price: true,
+      duration: true,
+      max_capacity: true,
+      created_at: true,
+      destinations: {
+        select: { id: true, name: true, country: true, image_url: true },
+      },
+      tour_images: { select: { id: true, image_url: true } },
+      reviews: { select: { rating: true } },
+    },
+  });
+
+  let results: TourSummary[] = tours.map((t) => ({
+    id: t.id,
+    title: t.title,
+    description: t.description,
+    price: Number(t.price),
+    duration: t.duration,
+    max_capacity: t.max_capacity,
+    created_at: t.created_at,
+    destination: t.destinations ?? null,
+    images: t.tour_images,
+    avg_rating:
+      t.reviews.length > 0
+        ? t.reviews.reduce((sum, r) => sum + (r.rating ?? 0), 0) / t.reviews.length
+        : null,
+    review_count: t.reviews.length,
+  }));
+
+  // Post-filter by rating (can't do this purely in Prisma since avg is computed)
+  if (filters.minRating !== undefined) {
+    results = results.filter(
+      (t) => t.avg_rating !== null && t.avg_rating >= filters.minRating!
+    );
+  }
+
+  // Sort by rating if requested (post-filter since rating is computed)
+  if (filters.sortBy === "rating") {
+    results.sort((a, b) => (b.avg_rating ?? 0) - (a.avg_rating ?? 0));
+  }
+
+  return results;
+}
+

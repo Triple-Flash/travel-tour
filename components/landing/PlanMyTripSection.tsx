@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { MapPin, Calendar, Users, ArrowRight, ChevronDown } from "lucide-react";
+import Link from "next/link";
 
 const provinces = [
   "Vịnh Hạ Long — Quảng Ninh",
@@ -136,14 +137,14 @@ export default function PlanMyTripSection() {
           </div>
 
           {/* Submit Button */}
-          <a
-            href="#"
+          <Link
+            href={`/search?destination=${encodeURIComponent(destination)}&date=${encodeURIComponent(date)}&guests=${guests}`}
             id="cta-plan-btn"
             className="group mt-4 md:mt-0 flex h-[68px] w-full md:w-[180px] shrink-0 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 via-violet-500 to-pink-500 text-[15px] font-bold text-white shadow-[0_0_30px_rgba(139,92,246,0.3)] transition-all duration-300 hover:shadow-[0_0_50px_rgba(6,182,212,0.5)] hover:scale-[1.02] no-underline"
           >
             Tìm Tour
             <ArrowRight size={18} className="transition-transform duration-300 group-hover:translate-x-1" />
-          </a>
+          </Link>
         </div>
       </div>
     </section>
