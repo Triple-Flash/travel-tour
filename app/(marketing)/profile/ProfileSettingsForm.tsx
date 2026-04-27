@@ -49,7 +49,7 @@ export default function ProfileSettingsForm({
         <div className="grid gap-6 md:grid-cols-2">
           <div>
             <label className="mb-2 block text-sm font-medium text-white/70">
-              Ho va ten
+             Họ & tên
             </label>
             <input
               type="text"
@@ -61,7 +61,7 @@ export default function ProfileSettingsForm({
           </div>
           <div>
             <label className="mb-2 block text-sm font-medium text-white/70">
-              Email dang nhap
+              Email đăng nhập
             </label>
             <input
               type="email"
@@ -70,14 +70,14 @@ export default function ProfileSettingsForm({
               className="w-full cursor-not-allowed rounded-xl border border-white/5 bg-black/30 px-4 py-3 text-white/40 outline-none"
             />
             <p className="mt-1.5 text-xs text-white/40">
-              Email khong the thay doi doi voi tai khoan lien ket Google.
+              Email không thể thay đổi đối với tài khoản liên kết với google
             </p>
           </div>
         </div>
 
         <div>
           <label className="mb-2 block text-sm font-medium text-white/70">
-            So dien thoai lien he
+            Số điện thoại liên hệ
           </label>
           <input
             type="tel"

@@ -1,73 +1,62 @@
 import Image from "next/image";
 import Link from "next/link";
-import { searchTours, getTours } from "@/data/queries/tours";
-import { getSession } from "@/lib/auth";
+import {
+  Search,
+  MapPin,
+  Calendar,
+  Users,
+  Star,
+  Clock,
+  ArrowRight,
+} from "lucide-react";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
-import { Search, MapPin, Calendar, Users, Star, Clock, ArrowRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import LandingEmptyState from "@/components/landing/LandingEmptyState";
 import SearchFilters from "@/components/search/SearchFilters";
 import SortSelect from "@/components/search/SortSelect";
+import { Badge } from "@/components/ui/badge";
+import { searchTours, getTours } from "@/data/queries/tours";
 import type { TourSummary, SearchToursFilters } from "@/data/queries/tours";
+import { getSession } from "@/lib/auth";
 
-const fallbackTours: (TourSummary & { tag: string; tagGradient: string; accent: string })[] = [
+const tourTags = [
   {
-    id: "halong-cruise",
-    title: "Du Thuyền Vịnh Hạ Long 3N2Đ",
-    description: "Khám phá kỳ quan thiên nhiên thế giới trên du thuyền 5 sao",
-    price: 4500000,
-    duration: 3,
-    max_capacity: 12,
-    created_at: new Date(),
-    destination: { id: "halong", name: "Vịnh Hạ Long", country: "Quảng Ninh", image_url: "/images/halong.png" },
-    images: [],
-    avg_rating: 4.9,
-    review_count: 324,
     tag: "Phù Hợp Nhất",
     tagGradient: "from-cyan-500 to-emerald-500",
     accent: "#06B6D4",
   },
   {
-    id: "sapa-trek",
-    title: "Trekking Sa Pa & Bản Làng",
-    description: "Chinh phục đỉnh Fansipan và trải nghiệm homestay",
-    price: 3200000,
-    duration: 4,
-    max_capacity: 10,
-    created_at: new Date(),
-    destination: { id: "sapa", name: "Sa Pa", country: "Lào Cai", image_url: "/images/sapa.png" },
-    images: [],
-    avg_rating: 4.8,
-    review_count: 218,
     tag: "Đề Xuất",
     tagGradient: "from-violet-500 to-fuchsia-500",
     accent: "#8B5CF6",
   },
+  {
+    tag: "Nổi Bật",
+    tagGradient: "from-orange-500 to-pink-500",
+    accent: "#F97316",
+  },
 ];
 
-/**
- * Extracts the destination name from the raw searchParams string.
- * The PlanMyTrip section sends values like "Vịnh Hạ Long — Quảng Ninh"
- * so we try to extract just the name part for the query.
- */
 function parseDestinationQuery(raw: string): string {
-  // Format: "Vịnh Hạ Long — Quảng Ninh" → take the first part
   if (raw.includes("—")) {
     return raw.split("—")[0].trim();
   }
+
   return raw.trim();
 }
 
-async function getSearchResults(filters: SearchToursFilters): Promise<TourSummary[]> {
+async function getSearchResults(
+  filters: SearchToursFilters,
+  hasSearchIntent: boolean
+): Promise<TourSummary[]> {
   try {
-    const tours = await searchTours(filters);
-    if (tours.length > 0) return tours;
-    // If filters returned nothing, try without filters to show something
-    const allTours = await getTours();
-    if (allTours.length > 0) return allTours;
-    return fallbackTours;
+    if (hasSearchIntent) {
+      return await searchTours(filters);
+    }
+
+    return await getTours();
   } catch {
-    return fallbackTours;
+    return [];
   }
 }
 
@@ -93,56 +82,83 @@ export default async function SearchResultsPage({
   const resolvedSearchParams = await searchParams;
   const session = await getSession();
 
-  // Build filters from search params
-  const rawDest = resolvedSearchParams.destination ? decodeURIComponent(resolvedSearchParams.destination) : "";
-  const destQuery = rawDest ? parseDestinationQuery(rawDest) : undefined;
-  const guests = resolvedSearchParams.guests ? parseInt(resolvedSearchParams.guests, 10) : undefined;
+  const rawDestination = resolvedSearchParams.destination
+    ? decodeURIComponent(resolvedSearchParams.destination)
+    : "";
+  const destinationQuery = rawDestination
+    ? parseDestinationQuery(rawDestination)
+    : undefined;
+  const guests = resolvedSearchParams.guests
+    ? parseInt(resolvedSearchParams.guests, 10)
+    : undefined;
 
   const filters: SearchToursFilters = {
-    destination: destQuery,
-    minPrice: resolvedSearchParams.minPrice ? parseFloat(resolvedSearchParams.minPrice) : undefined,
-    maxPrice: resolvedSearchParams.maxPrice ? parseFloat(resolvedSearchParams.maxPrice) : undefined,
-    minDuration: resolvedSearchParams.minDuration ? parseInt(resolvedSearchParams.minDuration, 10) : undefined,
-    maxDuration: resolvedSearchParams.maxDuration ? parseInt(resolvedSearchParams.maxDuration, 10) : undefined,
-    minRating: resolvedSearchParams.minRating ? parseInt(resolvedSearchParams.minRating, 10) : undefined,
+    destination: destinationQuery,
+    minPrice: resolvedSearchParams.minPrice
+      ? parseFloat(resolvedSearchParams.minPrice)
+      : undefined,
+    maxPrice: resolvedSearchParams.maxPrice
+      ? parseFloat(resolvedSearchParams.maxPrice)
+      : undefined,
+    minDuration: resolvedSearchParams.minDuration
+      ? parseInt(resolvedSearchParams.minDuration, 10)
+      : undefined,
+    maxDuration: resolvedSearchParams.maxDuration
+      ? parseInt(resolvedSearchParams.maxDuration, 10)
+      : undefined,
+    minRating: resolvedSearchParams.minRating
+      ? parseInt(resolvedSearchParams.minRating, 10)
+      : undefined,
     guests,
-    sortBy: (resolvedSearchParams.sortBy as SearchToursFilters["sortBy"]) || undefined,
+    sortBy:
+      (resolvedSearchParams.sortBy as SearchToursFilters["sortBy"]) || undefined,
   };
 
-  const tours = await getSearchResults(filters);
+  const hasSearchIntent = Boolean(
+    destinationQuery ||
+      resolvedSearchParams.guests ||
+      resolvedSearchParams.minPrice ||
+      resolvedSearchParams.maxPrice ||
+      resolvedSearchParams.minDuration ||
+      resolvedSearchParams.maxDuration ||
+      resolvedSearchParams.minRating ||
+      resolvedSearchParams.sortBy
+  );
 
-  const queryDest = rawDest || "Mọi nơi";
+  const tours = await getSearchResults(filters, hasSearchIntent);
+
+  const queryDestination = rawDestination || "Mọi nơi";
   const queryDate = resolvedSearchParams.date || "Thời gian bất kỳ";
-  const queryGuests = resolvedSearchParams.guests ? `${resolvedSearchParams.guests} khách` : "1 khách";
+  const queryGuests = resolvedSearchParams.guests
+    ? `${resolvedSearchParams.guests} khách`
+    : "1 khách";
 
-  // Check if any filters are active
-  const hasActiveFilters = !!(
+  const hasActiveFilters = Boolean(
     resolvedSearchParams.minPrice ||
-    resolvedSearchParams.maxPrice ||
-    resolvedSearchParams.minDuration ||
-    resolvedSearchParams.maxDuration ||
-    resolvedSearchParams.minRating
+      resolvedSearchParams.maxPrice ||
+      resolvedSearchParams.minDuration ||
+      resolvedSearchParams.maxDuration ||
+      resolvedSearchParams.minRating
   );
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-cyan-500/30">
       <Navbar user={session} />
 
-      <main className="relative pt-32 pb-24">
-        {/* Ambient Glows */}
-        <div className="absolute top-0 right-0 h-[600px] w-[600px] rounded-full bg-violet-500/10 blur-[150px] pointer-events-none" />
-        <div className="absolute top-1/2 left-0 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-cyan-500/5 blur-[120px] pointer-events-none" />
+      <main className="relative pb-24 pt-32">
+        <div className="pointer-events-none absolute right-0 top-0 h-[600px] w-[600px] rounded-full bg-violet-500/10 blur-[150px]" />
+        <div className="pointer-events-none absolute left-0 top-1/2 h-[500px] w-[500px] -translate-y-1/2 rounded-full bg-cyan-500/5 blur-[120px]" />
 
         <div className="relative z-10 mx-auto max-w-[1400px] px-6">
-          
-          {/* Header & Active Search Query */}
-          <div className="mb-12 rounded-[2.5rem] border border-white/10 bg-[#111]/80 p-6 md:p-8 backdrop-blur-2xl shadow-2xl">
-            <h1 className="mb-6 font-heading text-3xl md:text-4xl font-bold text-white">Kết Quả Tìm Kiếm</h1>
-            
+          <div className="mb-12 rounded-[2.5rem] border border-white/10 bg-[#111]/80 p-6 shadow-2xl backdrop-blur-2xl md:p-8">
+            <h1 className="mb-6 font-heading text-3xl font-bold text-white md:text-4xl">
+              Kết Quả Tìm Kiếm
+            </h1>
+
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-3 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-5 py-2.5 text-sm font-medium text-cyan-400">
                 <MapPin size={18} />
-                {queryDest}
+                {queryDestination}
               </div>
               <div className="flex items-center gap-3 rounded-full border border-violet-500/30 bg-violet-500/10 px-5 py-2.5 text-sm font-medium text-violet-400">
                 <Calendar size={18} />
@@ -152,43 +168,52 @@ export default async function SearchResultsPage({
                 <Users size={18} />
                 {queryGuests}
               </div>
-              
-              <Link href="/#plan" className="ml-auto inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/20">
+
+              <Link
+                href="/#plan"
+                className="ml-auto inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/20"
+              >
                 <Search size={16} />
                 Tìm kiếm mới
               </Link>
             </div>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-10">
-            {/* Filter Sidebar */}
+          <div className="flex flex-col gap-10 lg:flex-row">
             <SearchFilters />
 
-            {/* Results Grid */}
             <div className="flex-1">
               <div className="mb-6 flex items-center justify-between">
                 <p className="text-white/60">
                   Tìm thấy <strong className="text-white">{tours.length}</strong> tour phù hợp
-                  {hasActiveFilters && (
+                  {hasActiveFilters ? (
                     <span className="ml-2 text-cyan-400/60">(đang lọc)</span>
-                  )}
+                  ) : null}
                 </p>
                 <SortSelect />
               </div>
 
               {tours.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-[2rem] border border-white/5 bg-[#111]/50 px-6 py-20 text-center">
-                  <Search size={48} className="mb-4 text-white/20" />
-                  <h3 className="mb-2 text-xl font-bold text-white/60">Không tìm thấy kết quả</h3>
-                  <p className="text-sm text-white/40">Hãy thử thay đổi bộ lọc hoặc tìm kiếm với từ khóa khác.</p>
-                </div>
+                <LandingEmptyState
+                  icon={Search}
+                  badge="Không còn nội dung mẫu trong kết quả"
+                  title="Chưa tìm thấy tour phù hợp với lựa chọn của bạn"
+                  description="TravelTour không tự chèn tour giả khi dữ liệu rỗng. Bạn có thể nới bộ lọc, đổi điểm đến hoặc để lại nhu cầu ở phần lập kế hoạch để chúng tôi gợi ý hành trình sát hơn."
+                  primaryHref="/#plan"
+                  primaryLabel="Điều chỉnh kế hoạch"
+                  secondaryHref="/search"
+                  secondaryLabel="Xóa bộ lọc"
+                  highlights={[
+                    "Thử khoảng giá rộng hơn",
+                    "Giảm số điều kiện lọc",
+                    "Tìm theo khu vực lân cận",
+                  ]}
+                />
               ) : (
                 <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                  {tours.map((tour, idx) => {
-                    const image = tour.destination?.image_url || tour.images[0]?.image_url || "/images/halong.png";
-                    const tag = (tour as unknown as Record<string, string>).tag || "Nổi Bật";
-                    const tagGradient = (tour as unknown as Record<string, string>).tagGradient || "from-cyan-500 to-violet-500";
-                    const accent = (tour as unknown as Record<string, string>).accent || "#06B6D4";
+                  {tours.map((tour, index) => {
+                    const meta = tourTags[index % tourTags.length];
+                    const image = tour.destination?.image_url || tour.images[0]?.image_url;
 
                     return (
                       <Link
@@ -196,24 +221,39 @@ export default async function SearchResultsPage({
                         key={tour.id}
                         className="group relative h-[420px] w-full overflow-hidden rounded-[2rem] bg-zinc-900 transition-all duration-500 hover:shadow-[0_20px_60px_rgba(0,0,0,0.6)]"
                       >
-                        <Image
-                          src={image}
-                          alt={tour.title}
-                          fill
-                          className="object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        />
+                        {image ? (
+                          <Image
+                            src={image}
+                            alt={tour.title}
+                            fill
+                            className="object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-110"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          />
+                        ) : (
+                          <div
+                            className={`absolute inset-0 bg-gradient-to-br ${meta.tagGradient} opacity-80`}
+                          />
+                        )}
+
                         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/10 to-black/90 transition-opacity duration-500 group-hover:to-black/80" />
-                        
-                        <Badge className={`absolute left-5 top-5 rounded-full border border-white/20 bg-gradient-to-r ${tagGradient} px-3 py-1 text-[11px] font-bold tracking-wide text-white shadow-lg backdrop-blur-md`}>
-                          {tag}
+
+                        <Badge
+                          className={`absolute left-5 top-5 rounded-full border border-white/20 bg-gradient-to-r ${meta.tagGradient} px-3 py-1 text-[11px] font-bold tracking-wide text-white shadow-lg backdrop-blur-md`}
+                        >
+                          {meta.tag}
                         </Badge>
 
                         <div className="absolute bottom-0 left-0 right-0 flex flex-col justify-end p-6 transition-transform duration-500 ease-out group-hover:-translate-y-2">
                           <div className="mb-2 flex items-center gap-2">
                             <Star size={14} className="text-amber-400" fill="currentColor" />
-                            <span className="text-sm font-bold text-white">{tour.avg_rating?.toFixed(1) ?? "Mới"}</span>
-                            {tour.review_count > 0 && <span className="text-[12px] text-white/70">({tour.review_count})</span>}
+                            <span className="text-sm font-bold text-white">
+                              {tour.avg_rating?.toFixed(1) ?? "Mới"}
+                            </span>
+                            {tour.review_count > 0 ? (
+                              <span className="text-[12px] text-white/70">
+                                ({tour.review_count})
+                              </span>
+                            ) : null}
                           </div>
 
                           <h3 className="mb-2 font-heading text-xl font-bold leading-tight text-white drop-shadow-md">
@@ -221,16 +261,27 @@ export default async function SearchResultsPage({
                           </h3>
 
                           <div className="mb-5 flex items-center gap-4 text-[12px] font-medium text-white/80 opacity-80 transition-opacity duration-500 group-hover:opacity-100">
-                            <span className="flex items-center gap-1.5"><Clock size={14} className="text-cyan-400" /> {tour.duration} Ngày</span>
-                            <span className="flex items-center gap-1.5"><Users size={14} className="text-violet-400" /> Tối đa {tour.max_capacity}</span>
+                            <span className="flex items-center gap-1.5">
+                              <Clock size={14} className="text-cyan-400" /> {tour.duration} ngày
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <Users size={14} className="text-violet-400" /> Tối đa {tour.max_capacity}
+                            </span>
                           </div>
 
                           <div className="flex items-center justify-between border-t border-white/20 pt-4 transition-colors duration-500 group-hover:border-white/40">
                             <div>
-                              <span className="block text-[10px] uppercase tracking-widest text-white/60">Chỉ từ</span>
-                              <div className="font-heading text-xl font-bold tracking-tight text-white">{formatVND(tour.price)}</div>
+                              <span className="block text-[10px] uppercase tracking-widest text-white/60">
+                                Chỉ từ
+                              </span>
+                              <div className="font-heading text-xl font-bold tracking-tight text-white">
+                                {formatVND(tour.price)}
+                              </div>
                             </div>
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-md transition-all duration-300 group-hover:scale-110 group-hover:bg-white group-hover:text-black" style={{ boxShadow: `0 4px 20px ${accent}40` }}>
+                            <div
+                              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-md transition-all duration-300 group-hover:scale-110 group-hover:bg-white group-hover:text-black"
+                              style={{ boxShadow: `0 4px 20px ${meta.accent}40` }}
+                            >
                               <ArrowRight size={16} />
                             </div>
                           </div>
@@ -241,7 +292,6 @@ export default async function SearchResultsPage({
                 </div>
               )}
             </div>
-
           </div>
         </div>
       </main>

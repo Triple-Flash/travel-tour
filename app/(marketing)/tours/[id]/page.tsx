@@ -71,7 +71,7 @@ export default async function TourDetailPage({
                 size={16}
                 className="transition-transform group-hover:-translate-x-1"
               />
-              Tất cả tours
+              Tất cả tour
             </Link>
 
             <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -81,6 +81,7 @@ export default async function TourDetailPage({
                   {tour.destination.name}
                 </span>
               ) : null}
+
               <div className="flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[12px] font-bold text-amber-400 backdrop-blur-sm">
                 <Star size={12} fill="currentColor" />
                 {tour.avg_rating?.toFixed(1) || "Mới"}
@@ -90,6 +91,12 @@ export default async function TourDetailPage({
                   </span>
                 ) : null}
               </div>
+
+              <FavoriteTourButton
+                tourId={tour.id}
+                initialIsFavorite={isFavorite}
+                isSignedIn={Boolean(session)}
+              />
             </div>
 
             <h1 className="font-heading text-[clamp(2.5rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight text-white drop-shadow-xl">
@@ -152,8 +159,8 @@ export default async function TourDetailPage({
                       "Hướng dẫn viên chuyên nghiệp, nhiệt tình",
                       "Bảo hiểm du lịch toàn diện",
                       "Lịch trình linh hoạt, tối ưu thời gian",
-                    ].map((highlight, idx) => (
-                      <li key={idx} className="flex items-start gap-3 text-white/70">
+                    ].map((highlight, index) => (
+                      <li key={index} className="flex items-start gap-3 text-white/70">
                         <CheckCircle2
                           size={20}
                           className="mt-0.5 shrink-0 text-cyan-400"
@@ -194,17 +201,17 @@ export default async function TourDetailPage({
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
-                              {Array.from({ length: 5 }).map((_, i) => (
+                              {Array.from({ length: 5 }).map((_, index) => (
                                 <Star
-                                  key={i}
+                                  key={index}
                                   size={14}
                                   className={
-                                    i < (review.rating ?? 0)
+                                    index < (review.rating ?? 0)
                                       ? "text-amber-400"
                                       : "text-white/20"
                                   }
                                   fill={
-                                    i < (review.rating ?? 0)
+                                    index < (review.rating ?? 0)
                                       ? "currentColor"
                                       : "none"
                                   }
@@ -264,10 +271,10 @@ export default async function TourDetailPage({
                       >
                         {Array.from(
                           { length: Math.min(tour.max_capacity, 10) },
-                          (_, i) => i + 1
-                        ).map((n) => (
-                          <option key={n} value={n}>
-                            {n} người
+                          (_, index) => index + 1
+                        ).map((count) => (
+                          <option key={count} value={count}>
+                            {count} người
                           </option>
                         ))}
                       </select>
@@ -284,12 +291,6 @@ export default async function TourDetailPage({
                         </span>
                       </button>
                     </div>
-
-                    <FavoriteTourButton
-                      tourId={tour.id}
-                      initialIsFavorite={isFavorite}
-                      isSignedIn={Boolean(session)}
-                    />
 
                     <p className="text-center text-xs text-white/40">
                       Không thu phí khi hủy trước 7 ngày.

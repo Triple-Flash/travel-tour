@@ -1,7 +1,7 @@
 /**
  * data/queries/reviews.ts
  * Pure read functions for the `reviews` domain.
- * Public — no auth required for reading.
+ * Public - no auth required for reading.
  */
 import { db } from "@/lib/db";
 
@@ -26,30 +26,30 @@ export async function getRecentReviews(limit = 3): Promise<ReviewSummary[]> {
       users: { select: { full_name: true } },
       tours: { select: { title: true } },
     },
-    // Only get reviews that have comments and rating
     where: {
       comment: { not: null },
       rating: { not: null },
     },
   });
 
-  return reviews.map((r) => {
-    const fullName = r.users?.full_name || "Khách ẩn danh";
+  return reviews.map((review) => {
+    const fullName = review.users?.full_name || "Khách ẩn danh";
     const initials = fullName
       .split(" ")
-      .map((n) => n[0])
+      .map((part) => part[0])
+      .filter(Boolean)
       .slice(-2)
       .join("")
       .toUpperCase();
 
     return {
-      id: r.id,
+      id: review.id,
       name: fullName,
-      loc: "Việt Nam", // Mock location since DB doesn't have it
+      loc: "",
       avatar: initials || "U",
-      rating: r.rating || 5,
-      text: r.comment || "",
-      tour: r.tours?.title || "Tour du lịch",
+      rating: review.rating || 5,
+      text: review.comment || "",
+      tour: review.tours?.title || "Tour du lịch",
     };
   });
 }

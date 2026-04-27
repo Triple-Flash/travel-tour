@@ -3,10 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { Heart, Loader2 } from "lucide-react";
-import {
-  addToWishlistAction,
-  removeFromWishlistAction,
-} from "./actions";
+import { addToWishlistAction, removeFromWishlistAction } from "./actions";
 
 interface FavoriteTourButtonProps {
   tourId: string;
@@ -45,31 +42,41 @@ export default function FavoriteTourButton({
     return (
       <Link
         href="/login"
-        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-pink-500/30 bg-pink-500/10 px-6 py-3 font-bold text-pink-300 transition-all hover:bg-pink-500/20 hover:text-white"
+        aria-label="Đăng nhập để thêm vào yêu thích"
+        title="Đăng nhập để thêm vào yêu thích"
+        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-pink-500/30 bg-pink-500/10 text-pink-300 backdrop-blur-sm transition-all hover:scale-105 hover:bg-pink-500/20 hover:text-white"
       >
-        <Heart size={18} />
-        Add to favorites
+        <Heart size={14} />
       </Link>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="relative">
       <button
         type="button"
         onClick={toggleFavorite}
         disabled={isPending}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-pink-500/30 bg-pink-500/10 px-6 py-3 font-bold text-pink-300 transition-all hover:bg-pink-500/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+        aria-label={
+          isFavorite ? "Bỏ khỏi danh sách yêu thích" : "Thêm vào danh sách yêu thích"
+        }
+        title={
+          isFavorite ? "Bỏ khỏi danh sách yêu thích" : "Thêm vào danh sách yêu thích"
+        }
+        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-pink-500/30 bg-pink-500/10 text-pink-300 backdrop-blur-sm transition-all hover:scale-105 hover:bg-pink-500/20 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isPending ? (
-          <Loader2 size={18} className="animate-spin" />
+          <Loader2 size={14} className="animate-spin" />
         ) : (
-          <Heart size={18} fill={isFavorite ? "currentColor" : "none"} />
+          <Heart size={14} fill={isFavorite ? "currentColor" : "none"} />
         )}
-        {isFavorite ? "Saved to favorites" : "Add to favorites"}
       </button>
 
-      {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+      {error ? (
+        <p className="absolute left-0 top-[calc(100%+0.5rem)] min-w-max text-xs text-rose-300">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

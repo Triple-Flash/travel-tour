@@ -26,7 +26,10 @@ async function loadHomeData(): Promise<{
     ]);
     return { destinations, tours, reviews };
   } catch (err) {
-    console.warn("[Home] DB unavailable, using fallback data:", (err as Error).message);
+    console.warn(
+      "[Home] DB unavailable, sections will render empty states:",
+      (err as Error).message
+    );
     return { destinations: undefined, tours: undefined, reviews: undefined };
   }
 }
