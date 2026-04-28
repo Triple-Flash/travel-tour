@@ -6,8 +6,8 @@ interface LandingEmptyStateProps {
   badge: string;
   title: string;
   description: string;
-  primaryHref: string;
-  primaryLabel: string;
+  primaryHref?: string;
+  primaryLabel?: string;
   secondaryHref?: string;
   secondaryLabel?: string;
   highlights?: string[];
@@ -18,9 +18,9 @@ export default function LandingEmptyState({
   badge,
   title,
   description,
-  primaryHref,
+  primaryHref = "",
   primaryLabel,
-  secondaryHref,
+  secondaryHref="",
   secondaryLabel,
   highlights = [],
   icon: Icon,

@@ -203,6 +203,57 @@ export async function getLatestPaidBooking(): Promise<Booking | null> {
   return mapBooking(payment.bookings);
 }
 
+// ─── Success-page summary ─────────────────────────────────────────────────────
+
+export interface BookingSummaryByOrder {
+  tourTitle: string;
+  destinationName: string | null;
+  bookingDate: Date | null;
+  numberOfPeople: number;
+  totalPrice: number;
+  paymentMethod: string;
+}
+
+/**
+ * Returns lightweight booking info for the checkout success page.
+ * Looks up by PayOS order code stored on the payment record.
+ * Public — no auth required (the orderCode itself acts as the access key).
+ */
+export async function getBookingSummaryByOrderCode(
+  orderCode: number
+): Promise<BookingSummaryByOrder | null> {
+  const payment = await db.payments.findUnique({
+    where: { payos_order_code: orderCode },
+    select: {
+      payment_method: true,
+      bookings: {
+        select: {
+          booking_date: true,
+          number_of_people: true,
+          total_price: true,
+          tours: {
+            select: {
+              title: true,
+              destinations: { select: { name: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!payment?.bookings) return null;
+
+  return {
+    tourTitle: payment.bookings.tours?.title ?? "Tour",
+    destinationName: payment.bookings.tours?.destinations?.name ?? null,
+    bookingDate: payment.bookings.booking_date,
+    numberOfPeople: payment.bookings.number_of_people,
+    totalPrice: Number(payment.bookings.total_price),
+    paymentMethod: payment.payment_method,
+  };
+}
+
 // ─── Private mapper ───────────────────────────────────────────────────────────
 
 // Decimal lives inside the Prisma namespace in the generated output.

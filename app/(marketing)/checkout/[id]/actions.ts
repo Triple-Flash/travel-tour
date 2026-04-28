@@ -3,9 +3,10 @@
 /**
  * app/(marketing)/checkout/[id]/actions.ts
  * Server Actions for the PayOS checkout flow.
- * Calls data/mutations/payments — no direct DB access.
+ * Calls data/mutations/payments and data/queries/promotions — no direct DB access.
  */
 import { createPayosPayment } from "@/data/mutations/payments";
+import { getPromotionByCode } from "@/data/queries/promotions";
 import { AuthError } from "@/lib/auth";
 import { ValidationError, NotFoundError, ForbiddenError } from "@/data/errors";
 import type { CreatePayosPaymentInput } from "@/data/dto/payments";
@@ -29,6 +30,23 @@ export async function createPayosCheckoutAction(
   }
 }
 
+export async function validatePromoAction(
+  code: string
+): Promise<ActionResult<{ code: string; discount_percentage: number }>> {
+  try {
+    const promo = await getPromotionByCode(code);
+    return {
+      success: true,
+      data: {
+        code: promo.code,
+        discount_percentage: promo.discount_percentage ?? 0,
+      },
+    };
+  } catch (err) {
+    return { success: false, error: resolveError(err) };
+  }
+}
+
 // ─── Shared error resolver ────────────────────────────────────────────────────
 
 function resolveError(err: unknown): string {
@@ -39,3 +57,4 @@ function resolveError(err: unknown): string {
   console.error("[CheckoutAction]", err);
   return (err as Error)?.message || "Đã xảy ra lỗi. Vui lòng thử lại.";
 }
+

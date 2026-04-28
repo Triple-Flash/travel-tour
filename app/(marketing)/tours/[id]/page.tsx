@@ -16,6 +16,7 @@ import { getSession } from "@/lib/auth";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import FavoriteTourButton from "./FavoriteTourButton";
+import BookingForm from "./BookingForm";
 
 function formatVND(price: number): string {
   return price.toLocaleString("vi-VN") + "đ";
@@ -248,54 +249,11 @@ export default async function TourDetailPage({
                     <span className="mb-1 text-white/50">/ người</span>
                   </div>
 
-                  <form action={`/checkout/${tour.id}`} method="GET" className="space-y-6">
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-white/70">
-                        Ngày khởi hành dự kiến
-                      </label>
-                      <input
-                        type="date"
-                        name="date"
-                        className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-white outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 [color-scheme:dark]"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-white/70">
-                        Số lượng khách
-                      </label>
-                      <select
-                        name="guests"
-                        className="w-full rounded-xl border border-white/10 bg-black/50 px-4 py-3 text-white outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50"
-                      >
-                        {Array.from(
-                          { length: Math.min(tour.max_capacity, 10) },
-                          (_, index) => index + 1
-                        ).map((count) => (
-                          <option key={count} value={count}>
-                            {count} người
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="pt-2">
-                      <button
-                        type="submit"
-                        className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-cyan-500 to-violet-500 px-6 py-4 font-bold text-white shadow-[0_0_30px_rgba(6,182,212,0.3)] transition-all hover:scale-[1.02] hover:shadow-[0_0_40px_rgba(6,182,212,0.5)]"
-                      >
-                        <div className="absolute inset-0 bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
-                        <span className="relative z-10 flex items-center justify-center gap-2">
-                          Đặt tour ngay
-                        </span>
-                      </button>
-                    </div>
-
-                    <p className="text-center text-xs text-white/40">
-                      Không thu phí khi hủy trước 7 ngày.
-                    </p>
-                  </form>
+                  <BookingForm
+                    tourId={tour.id}
+                    maxCapacity={tour.max_capacity}
+                    price={tour.price}
+                  />
                 </div>
               </div>
             </div>

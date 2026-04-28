@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createReview, updateReview } from "@/data/mutations/reviews";
+import { repayBookingPayment } from "@/data/mutations/payments";
 import { AuthError } from "@/lib/auth";
 import { ValidationError, NotFoundError, ForbiddenError } from "@/data/errors";
 import type { CreateReviewInput, UpdateReviewInput } from "@/data/dto/reviews";
@@ -9,6 +10,8 @@ import type { CreateReviewInput, UpdateReviewInput } from "@/data/dto/reviews";
 export type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string };
+
+// ─── Review actions ───────────────────────────────────────────────────────────
 
 export async function createReviewAction(
   input: CreateReviewInput
@@ -37,11 +40,30 @@ export async function updateReviewAction(
   }
 }
 
+// ─── Repay action ─────────────────────────────────────────────────────────────
+
+/**
+ * Re-generates a PayOS checkout URL for an existing pending booking.
+ * Does NOT create a new booking — updates the existing payment row only.
+ */
+export async function repayAction(
+  bookingId: string
+): Promise<ActionResult<{ checkoutUrl: string }>> {
+  try {
+    const result = await repayBookingPayment(bookingId);
+    return { success: true, data: { checkoutUrl: result.checkoutUrl } };
+  } catch (err) {
+    return { success: false, error: resolveError(err) };
+  }
+}
+
+// ─── Shared error resolver ────────────────────────────────────────────────────
+
 function resolveError(err: unknown): string {
   if (err instanceof AuthError) return "Please sign in to continue.";
   if (err instanceof ValidationError) return err.message;
   if (err instanceof NotFoundError) return err.message;
   if (err instanceof ForbiddenError) return err.message;
-  console.error("[MarketingBookingReviewAction]", err);
+  console.error("[BookingsAction]", err);
   return "An unexpected error occurred.";
 }

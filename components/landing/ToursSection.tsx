@@ -141,13 +141,11 @@ export default function ToursSection({ tours }: ToursSectionProps) {
         ) : (
           <LandingEmptyState
             icon={Route}
-            badge="Kho tour nổi bật đang chờ dữ liệu thật"
+            badge="Kho tour nổi bật đang chờ dữ liệu"
             title="Hiện chưa có tour nào để giới thiệu"
-            description="Thay vì hiển thị nội dung mẫu, TravelTour sẽ giữ không gian này thật chỉn chu cho đến khi các hành trình thực tế được xuất bản. Khi dữ liệu sẵn sàng, nơi đây sẽ trở thành điểm nhấn của toàn bộ landing page."
+            description=""
             primaryHref="/search"
-            primaryLabel="Xem trang tìm kiếm"
-            secondaryHref="#plan"
-            secondaryLabel="Yêu cầu tư vấn riêng"
+           
             highlights={[
               "Ưu tiên tour phù hợp khách Việt",
               "Lịch trình rõ ràng, dễ theo dõi",

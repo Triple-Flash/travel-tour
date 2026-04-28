@@ -6,7 +6,7 @@
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { payos } from "@/lib/payos";
-import { ValidationError, NotFoundError } from "@/data/errors";
+import { ValidationError, NotFoundError, ForbiddenError } from "@/data/errors";
 import {
   CreatePayosPaymentSchema,
   type CreatePayosPaymentInput,
@@ -182,3 +182,86 @@ export async function cancelPayosPayment(orderCode: number): Promise<void> {
     }
   });
 }
+
+// ─── Repay existing booking ───────────────────────────────────────────────────
+
+export interface RepayResult {
+  checkoutUrl: string;
+  orderCode: number;
+}
+
+/**
+ * Re-generates a PayOS payment link for an existing pending booking.
+ * Does NOT create a new booking or payment record.
+ * Assigns a fresh orderCode (new PayOS order), updates the existing payment row.
+ */
+export async function repayBookingPayment(bookingId: string): Promise<RepayResult> {
+  const user = await requireAuth();
+
+  // Fetch booking + payment in one query, verify ownership
+  const booking = await db.bookings.findUnique({
+    where: { id: bookingId },
+    select: {
+      id: true,
+      user_id: true,
+      number_of_people: true,
+      total_price: true,
+      booking_date: true,
+      status: true,
+      tours: { select: { title: true } },
+      payments: {
+        select: {
+          id: true,
+          payment_status: true,
+          amount: true,
+        },
+      },
+    },
+  });
+
+  if (!booking) throw new NotFoundError("Booking", bookingId);
+  if (booking.user_id !== user.id) throw new ForbiddenError();
+  if (booking.status !== "pending") {
+    throw new ValidationError("Booking is not in a repayable state.");
+  }
+  if (!booking.payments) {
+    throw new NotFoundError("Payment record for booking", bookingId);
+  }
+  if (booking.payments.payment_status !== "pending") {
+    throw new ValidationError("Payment is not in a pending state.");
+  }
+
+  // New order code for PayOS (each PayOS request must be unique)
+  const newOrderCode = Date.now() % 2_147_483_647;
+  const totalPrice = Number(booking.payments.amount);
+  const tourTitle = booking.tours?.title ?? "Tour";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
+  // Create a fresh PayOS payment link (no new DB booking/payment record)
+  const paymentLinkResponse = await payos.paymentRequests.create({
+    orderCode: newOrderCode,
+    amount: Math.round(totalPrice),
+    description: `Tour: ${tourTitle}`.slice(0, 25),
+    returnUrl: `${siteUrl}/checkout/success?orderCode=${newOrderCode}`,
+    cancelUrl: `${siteUrl}/checkout/cancel?orderCode=${newOrderCode}`,
+    items: [
+      {
+        name: tourTitle.slice(0, 256),
+        quantity: booking.number_of_people,
+        price: Math.round(totalPrice / booking.number_of_people),
+      },
+    ],
+  });
+
+  // Update the existing payment record with the new order code
+  await db.payments.update({
+    where: { id: booking.payments.id },
+    data: { payos_order_code: newOrderCode },
+  });
+
+  return {
+    checkoutUrl: paymentLinkResponse.checkoutUrl,
+    orderCode: newOrderCode,
+  };
+}
+
