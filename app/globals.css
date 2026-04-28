@@ -75,8 +75,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-body), 'DM Sans', system-ui, sans-serif;
-  --font-heading: var(--font-heading-var), 'DM Sans', system-ui, sans-serif;
+  --font-sans: var(--font-heading-var), 'Inter', system-ui, sans-serif;
+  --font-heading: var(--font-heading-var), 'Inter', system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -116,6 +116,85 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ── Light mode (admin dashboard only — marketing stays dark) ────────────────── */
+
+.light {
+  --background: #ffffff;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --card-foreground: #09090b;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #18181b;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #09090b;
+  --sidebar-border: #e4e4e7;
+}
+
+.dark {
+  /* Keep dark aurora values from :root */
+  --background: #0B1120;
+  --foreground: #F1F5F9;
+  --card: #111827;
+  --card-foreground: #F1F5F9;
+  --popover: #111827;
+  --popover-foreground: #F1F5F9;
+  --primary: #06B6D4;
+  --primary-foreground: #030712;
+  --secondary: #1E293B;
+  --secondary-foreground: #F1F5F9;
+  --muted: #1E293B;
+  --muted-foreground: #94A3B8;
+  --accent: #1E293B;
+  --accent-foreground: #F1F5F9;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: rgba(255,255,255,0.08);
+  --input: rgba(255,255,255,0.08);
+  --ring: #06B6D4;
+  --sidebar: #111827;
+  --sidebar-foreground: #F1F5F9;
+  --sidebar-border: rgba(255,255,255,0.08);
+}
+
+/* Admin dark mode — neutral zinc (not aurora) */
+.admin-dark {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #18181b;
+  --card-foreground: #fafafa;
+  --popover: #18181b;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #09090b;
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --border: #27272a;
+  --input: #27272a;
+  --ring: #fafafa;
+  --sidebar: #18181b;
+  --sidebar-foreground: #fafafa;
+  --sidebar-border: #27272a;
+}
+
 /* ── Base ──────────────────────────────────────────────────────────────────────── */
 
 @layer base {
@@ -139,12 +218,16 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-  background-color: #0B1120 !important;
   color: #F1F5F9;
 }
 
+/* Admin body override — clear the marketing dark bg */
+body:has(.admin-shell) {
+  background-color: unset !important;
+}
+
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-heading), 'DM Sans', sans-serif;
+  font-family: var(--font-heading-var), 'Inter', sans-serif;
   color: var(--tt-text);
   line-height: 1.15;
 }
