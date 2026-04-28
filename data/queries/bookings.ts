@@ -327,3 +327,209 @@ function mapBooking(b: RawBooking): Booking {
       : null,
   };
 }
+
+// ─── Admin Revenue Types ───────────────────────────────────────────────────────
+
+export interface RevenueStats {
+  totalRevenue: number;
+  totalBookings: number;
+  avgBookingValue: number;
+  pendingRevenue: number;
+  confirmedCount: number;
+  pendingCount: number;
+  cancelledCount: number;
+}
+
+export interface MonthlyRevenue {
+  month: string;
+  revenue: number;
+  bookings: number;
+}
+
+export interface TourRevenue {
+  tourId: string;
+  tourTitle: string;
+  revenue: number;
+  bookingCount: number;
+}
+
+export interface RecentTransaction {
+  bookingId: string;
+  tourTitle: string;
+  customerName: string;
+  amount: number;
+  status: string;
+  date: Date | null;
+}
+
+// ─── Admin Revenue Queries ─────────────────────────────────────────────────────
+
+async function requireAdmin() {
+  const user = await requireAuth();
+  if (user.role !== "admin") throw new ForbiddenError();
+  return user;
+}
+
+/** Admin-only: platform-wide revenue statistics. */
+export async function getRevenueStats(): Promise<RevenueStats> {
+  await requireAdmin();
+
+  const [completedAgg, pendingAgg, statusCounts, totalBookings] =
+    await Promise.all([
+      db.payments.aggregate({
+        _sum: { amount: true },
+        where: { payment_status: "completed" },
+      }),
+      db.payments.aggregate({
+        _sum: { amount: true },
+        where: { payment_status: "pending" },
+      }),
+      db.bookings.groupBy({
+        by: ["status"],
+        _count: { _all: true },
+      }),
+      db.bookings.count(),
+    ]);
+
+  const totalRevenue = Number(completedAgg._sum.amount ?? 0);
+  const pendingRevenue = Number(pendingAgg._sum.amount ?? 0);
+
+  const completedPaymentsCount = await db.payments.count({
+    where: { payment_status: "completed" },
+  });
+
+  const confirmedCount =
+    statusCounts.find((s) => s.status === "confirmed")?._count._all ?? 0;
+  const pendingCount =
+    statusCounts.find((s) => s.status === "pending")?._count._all ?? 0;
+  const cancelledCount =
+    statusCounts.find((s) => s.status === "cancelled")?._count._all ?? 0;
+
+  return {
+    totalRevenue,
+    totalBookings,
+    avgBookingValue:
+      completedPaymentsCount > 0 ? totalRevenue / completedPaymentsCount : 0,
+    pendingRevenue,
+    confirmedCount,
+    pendingCount,
+    cancelledCount,
+  };
+}
+
+/** Admin-only: monthly revenue for last N months. */
+export async function getMonthlyRevenue(months = 6): Promise<MonthlyRevenue[]> {
+  await requireAdmin();
+
+  const since = new Date();
+  since.setMonth(since.getMonth() - months + 1);
+  since.setDate(1);
+  since.setHours(0, 0, 0, 0);
+
+  const payments = await db.payments.findMany({
+    where: {
+      payment_status: "completed",
+      payment_date: { gte: since },
+    },
+    select: { amount: true, payment_date: true },
+  });
+
+  // Build a map month-key → { revenue, bookings }
+  const map = new Map<string, { revenue: number; bookings: number }>();
+
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    map.set(key, { revenue: 0, bookings: 0 });
+  }
+
+  for (const p of payments) {
+    if (!p.payment_date) continue;
+    const key = `${p.payment_date.getFullYear()}-${String(p.payment_date.getMonth() + 1).padStart(2, "0")}`;
+    const entry = map.get(key);
+    if (entry) {
+      entry.revenue += Number(p.amount);
+      entry.bookings += 1;
+    }
+  }
+
+  const shortMonths = ["Th1","Th2","Th3","Th4","Th5","Th6","Th7","Th8","Th9","Th10","Th11","Th12"];
+
+  return Array.from(map.entries()).map(([key, val]) => ({
+    month: shortMonths[parseInt(key.split("-")[1], 10) - 1],
+    revenue: val.revenue,
+    bookings: val.bookings,
+  }));
+}
+
+/** Admin-only: top N tours by revenue. */
+export async function getTopToursByRevenue(limit = 5): Promise<TourRevenue[]> {
+  await requireAdmin();
+
+  const bookings = await db.bookings.findMany({
+    where: { payments: { payment_status: "completed" } },
+    select: {
+      tour_id: true,
+      total_price: true,
+      tours: { select: { title: true } },
+    },
+  });
+
+  const tourMap = new Map<string, { title: string; revenue: number; count: number }>();
+  for (const b of bookings) {
+    if (!b.tour_id || !b.tours) continue;
+    const existing = tourMap.get(b.tour_id);
+    if (existing) {
+      existing.revenue += Number(b.total_price);
+      existing.count += 1;
+    } else {
+      tourMap.set(b.tour_id, {
+        title: b.tours.title,
+        revenue: Number(b.total_price),
+        count: 1,
+      });
+    }
+  }
+
+  return Array.from(tourMap.entries())
+    .sort((a, b) => b[1].revenue - a[1].revenue)
+    .slice(0, limit)
+    .map(([tourId, val]) => ({
+      tourId,
+      tourTitle: val.title,
+      revenue: val.revenue,
+      bookingCount: val.count,
+    }));
+}
+
+/** Admin-only: most recent N transactions. */
+export async function getRecentTransactions(limit = 10): Promise<RecentTransaction[]> {
+  await requireAdmin();
+
+  const payments = await db.payments.findMany({
+    orderBy: { payment_date: "desc" },
+    take: limit,
+    select: {
+      amount: true,
+      payment_status: true,
+      payment_date: true,
+      bookings: {
+        select: {
+          id: true,
+          tours: { select: { title: true } },
+          users: { select: { full_name: true, email: true } },
+        },
+      },
+    },
+  });
+
+  return payments.map((p) => ({
+    bookingId: p.bookings?.id ?? "—",
+    tourTitle: p.bookings?.tours?.title ?? "—",
+    customerName: p.bookings?.users?.full_name ?? p.bookings?.users?.email ?? "—",
+    amount: Number(p.amount),
+    status: p.payment_status ?? "unknown",
+    date: p.payment_date,
+  }));
+}

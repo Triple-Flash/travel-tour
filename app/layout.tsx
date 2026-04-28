@@ -36,7 +36,7 @@ export default function RootLayout({
       className={cn(dmSans.variable, dmSansBody.variable)}
       suppressHydrationWarning
     >
-      <body className="antialiased">{children}</body>
+      <body className="antialiased" suppressHydrationWarning>{children}</body>
     </html>
   );
 }
