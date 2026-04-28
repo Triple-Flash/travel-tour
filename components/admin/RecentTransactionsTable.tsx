@@ -1,80 +1,66 @@
+"use client"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
+import { AdminDataTable, StatusBadge, type Column } from "@/components/admin/AdminDataTable"
 import type { RecentTransaction } from "@/data/queries/bookings"
 import { formatCurrency, formatDate } from "@/lib/format"
+import { ArrowUpRight } from "lucide-react"
 
 interface RecentTransactionsTableProps {
   data: RecentTransaction[]
 }
 
-function StatusBadge({ status }: { status: string }) {
-  switch (status) {
-    case "completed":
-      return <Badge variant="default" className="text-[11px]">Hoàn thành</Badge>
-    case "pending":
-      return <Badge variant="secondary" className="text-[11px]">Chờ thanh toán</Badge>
-    case "cancelled":
-      return <Badge variant="destructive" className="text-[11px]">Đã huỷ</Badge>
-    default:
-      return <Badge variant="outline" className="text-[11px]">{status}</Badge>
-  }
-}
+interface TxRow extends RecentTransaction { id: string }
+
+const COLUMNS: Column<TxRow>[] = [
+  {
+    key: "tour",
+    header: "Tour",
+    className: "pl-5 max-w-[180px]",
+    render: (r) => <span className="block truncate font-medium text-foreground">{r.tourTitle}</span>,
+  },
+  {
+    key: "customer",
+    header: "Khách hàng",
+    render: (r) => <span className="text-muted-foreground">{r.customerName}</span>,
+  },
+  {
+    key: "amount",
+    header: "Số tiền",
+    render: (r) => (
+      <span className="tabular-nums font-semibold text-foreground">{formatCurrency(r.amount)}</span>
+    ),
+  },
+  {
+    key: "status",
+    header: "Trạng thái",
+    render: (r) => <StatusBadge status={r.status} />,
+  },
+  {
+    key: "date",
+    header: "Ngày",
+    className: "pr-4",
+    render: (r) => <span className="tabular-nums text-muted-foreground">{formatDate(r.date)}</span>,
+  },
+]
 
 export function RecentTransactionsTable({ data }: RecentTransactionsTableProps) {
+  // AdminDataTable needs id field
+  const rows: TxRow[] = data.map((tx) => ({ ...tx, id: tx.bookingId }))
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">Giao Dịch Gần Đây</CardTitle>
+    <Card className="overflow-hidden p-0">
+      <CardHeader className="px-5 py-4 border-b border-border flex flex-row items-center justify-between">
+        <CardTitle className="text-sm font-semibold">Giao Dịch Gần Đây</CardTitle>
+        <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead scope="col" className="pl-6 text-xs">Tour</TableHead>
-              <TableHead scope="col" className="text-xs">Khách hàng</TableHead>
-              <TableHead scope="col" className="text-xs">Số tiền</TableHead>
-              <TableHead scope="col" className="text-xs">Trạng thái</TableHead>
-              <TableHead scope="col" className="pr-6 text-xs">Ngày</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground text-sm">
-                  Chưa có giao dịch nào
-                </TableCell>
-              </TableRow>
-            ) : (
-              data.map((tx) => (
-                <TableRow key={tx.bookingId} className="group">
-                  <TableCell className="pl-6 font-medium text-sm max-w-[180px]">
-                    <span className="truncate block">{tx.tourTitle}</span>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {tx.customerName}
-                  </TableCell>
-                  <TableCell className="text-sm font-medium tabular-nums">
-                    {formatCurrency(tx.amount)}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={tx.status} />
-                  </TableCell>
-                  <TableCell className="pr-6 text-sm text-muted-foreground tabular-nums">
-                    {formatDate(tx.date)}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+        <AdminDataTable
+          data={rows}
+          columns={COLUMNS}
+          defaultRowsPerPage={10}
+          emptyMessage="Chưa có giao dịch nào"
+        />
       </CardContent>
     </Card>
   )

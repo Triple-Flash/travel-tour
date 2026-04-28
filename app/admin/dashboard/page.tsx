@@ -43,7 +43,7 @@ async function DashboardContent() {
     <div className="space-y-6">
       {/* Page heading */}
       <div>
-        <h1 className="text-xl font-semibold tracking-tight">Tổng Quan Doanh Thu</h1>
+        <div className="text-xl font-semibold tracking-tight">Tổng Quan Doanh Thu</div>
         <p className="text-sm text-muted-foreground mt-0.5">
           Dữ liệu thống kê toàn nền tảng TravelTour
         </p>

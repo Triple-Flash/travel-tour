@@ -5,7 +5,7 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   // Where to redirect after login (defaults to /dashboard)
-  const next = searchParams.get("next") ?? "/dashboard";
+  const next = searchParams.get("next") ?? "/admin";
 
   if (code) {
     const supabase = await createServerClient();
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
       const { getSession } = await import("@/lib/auth");
       const sessionUser = await getSession();
       
-      const redirectPath = sessionUser?.role === "admin" ? "/dashboard" : "/";
+      const redirectPath = sessionUser?.role === "admin" ? "/admin" : "/";
       return NextResponse.redirect(`${origin}${redirectPath}`);
     }
   }
