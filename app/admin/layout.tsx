@@ -9,6 +9,8 @@ export const metadata = {
   description: "Admin dashboard for TravelTour platform",
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({
   children,
 }: {
