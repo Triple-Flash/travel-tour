@@ -11,11 +11,12 @@ import { createServerClient } from "@/lib/supabase";
 
 export async function signInWithGoogle(): Promise<void> {
   const supabase = await createServerClient();
+  const headersList = await headers();
   
-  // Robust URL resolution for Vercel/Local
-  let siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_VERCEL_URL ?? "http://localhost:3000";
-  siteUrl = siteUrl.startsWith("http") ? siteUrl : `https://${siteUrl}`;
-  const origin = siteUrl.replace(/\/$/, ""); // Remove trailing slash
+  // 100% dynamic URL resolution based on the actual request domain
+  const host = headersList.get("host") || "localhost:3000";
+  const protocol = headersList.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
+  const origin = `${protocol}://${host}`;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
