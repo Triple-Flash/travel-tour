@@ -105,16 +105,17 @@ model tours {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model users {
-  id            String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id            String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   full_name     String
-  email         String     @unique
+  email         String          @unique
   password_hash String
-  role          String?    @default("customer")
+  role          String?         @default("customer")
   phone_number  String?
-  created_at    DateTime?  @default(now()) @db.Timestamp(6)
+  created_at    DateTime?       @default(now()) @db.Timestamp(6)
   bookings      bookings[]
   reviews       reviews[]
   wishlist      wishlist[]
+  chat_sessions chat_sessions[]
 
   @@index([email], map: "idx_users_email")
 }
@@ -127,4 +128,30 @@ model wishlist {
   users   users  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([user_id, tour_id])
+}
+
+// ─── Chat History ─────────────────────────────────────────────────────────────
+
+/// One chat session per user (or anonymous). Contains all messages for that session.
+model chat_sessions {
+  id           String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id      String?         @db.Uuid
+  created_at   DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at   DateTime?       @default(now()) @updatedAt @db.Timestamp(6)
+  users        users?          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  messages     chat_messages[]
+
+  @@index([user_id], map: "idx_chat_sessions_user")
+}
+
+/// Individual messages within a chat session.
+model chat_messages {
+  id         String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  session_id String        @db.Uuid
+  role       String        // "user" | "assistant"
+  content    String
+  created_at DateTime?     @default(now()) @db.Timestamp(6)
+  session    chat_sessions @relation(fields: [session_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([session_id], map: "idx_chat_messages_session")
 }
