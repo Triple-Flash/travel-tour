@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { ChatButton } from "@/components/chat/ChatButton";
 
 const inter = Inter({
   variable: "--font-heading-var",
@@ -29,7 +30,12 @@ export default function RootLayout({
       className={cn(inter.variable)}
       suppressHydrationWarning
     >
-      <body className="antialiased" suppressHydrationWarning>{children}</body>
+      <body className="antialiased" suppressHydrationWarning>
+        {children}
+        {/* Global AI Travel Assistant — available on every page */}
+        <ChatButton />
+      </body>
     </html>
   );
 }
+
