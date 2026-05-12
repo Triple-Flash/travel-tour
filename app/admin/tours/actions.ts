@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 import { db } from "@/lib/db"
 import { getSession } from "@/lib/auth"
 import { ForbiddenError } from "@/data/errors"
@@ -33,6 +33,7 @@ export async function createTour(data: TourFormData): Promise<string> {
     select: { id: true },
   })
   revalidatePath("/admin/tours")
+  updateTag("tours")
   return tour.id
 }
 
@@ -50,10 +51,12 @@ export async function updateTour(id: string, data: TourFormData) {
     },
   })
   revalidatePath("/admin/tours")
+  updateTag("tours")
 }
 
 export async function deleteTour(id: string) {
   await requireAdmin()
   await db.tours.delete({ where: { id } })
   revalidatePath("/admin/tours")
+  updateTag("tours")
 }
