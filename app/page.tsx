@@ -7,7 +7,6 @@ import WhyUsSection from "@/components/landing/WhyUsSection";
 import ReviewsSection from "@/components/landing/ReviewsSection";
 import PlanMyTripSection from "@/components/landing/PlanMyTripSection";
 import Footer from "@/components/landing/Footer";
-import { getSession } from "@/lib/auth";
 
 // ─── Async data-fetching components (streamed via Suspense) ──────────────────
 
@@ -68,14 +67,20 @@ function SectionSkeleton({ id }: { id: string }) {
   );
 }
 
+async function NavbarLoader() {
+  const { getSession } = await import("@/lib/auth");
+  const session = await getSession();
+  return <Navbar user={session} />;
+}
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
-export default async function Home() {
-  const session = await getSession();
-
+export default function Home() {
   return (
     <>
-      <Navbar user={session} />
+      <Suspense fallback={<Navbar user={null} />}>
+        <NavbarLoader />
+      </Suspense>
       <main>
         <HeroSection />
         <Suspense fallback={<SectionSkeleton id="destinations" />}>
