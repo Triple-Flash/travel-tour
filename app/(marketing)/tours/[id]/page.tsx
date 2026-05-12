@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,12 +12,33 @@ import {
   Users,
 } from "lucide-react";
 import { getTourById } from "@/data/queries/tours";
-import { getMyWishlist } from "@/data/queries/wishlist";
-import { getSession } from "@/lib/auth";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import FavoriteTourButton from "./FavoriteTourButton";
 import BookingForm from "./BookingForm";
+
+async function NavbarLoader() {
+  const { getSession } = await import("@/lib/auth");
+  const session = await getSession();
+  return <Navbar user={session} />;
+}
+
+async function FavoriteButtonLoader({ tourId }: { tourId: string }) {
+  const { getSession } = await import("@/lib/auth");
+  const { getMyWishlist } = await import("@/data/queries/wishlist");
+  
+  const session = await getSession();
+  const wishlist = session ? await getMyWishlist().catch(() => []) : [];
+  const isFavorite = wishlist.some((item) => item.tour.id === tourId);
+  
+  return (
+    <FavoriteTourButton
+      tourId={tourId}
+      initialIsFavorite={isFavorite}
+      isSignedIn={Boolean(session)}
+    />
+  );
+}
 
 function formatVND(price: number): string {
   return price.toLocaleString("vi-VN") + "đ";
@@ -36,16 +58,14 @@ export default async function TourDetailPage({
     notFound();
   }
 
-  const session = await getSession();
-  const wishlist = session ? await getMyWishlist().catch(() => []) : [];
-  const isFavorite = wishlist.some((item) => item.tour.id === tour.id);
-
   const image =
     tour.destination?.image_url || tour.images[0]?.image_url || "/images/halong.png";
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-cyan-500/30">
-      <Navbar user={session} />
+      <Suspense fallback={<Navbar user={null} />}>
+        <NavbarLoader />
+      </Suspense>
 
       <main className="relative pb-24">
         <section className="relative h-[65vh] min-h-[500px] w-full overflow-hidden">
@@ -93,11 +113,9 @@ export default async function TourDetailPage({
                 ) : null}
               </div>
 
-              <FavoriteTourButton
-                tourId={tour.id}
-                initialIsFavorite={isFavorite}
-                isSignedIn={Boolean(session)}
-              />
+              <Suspense fallback={<div className="h-8 w-8 animate-pulse rounded-full bg-white/10" />}>
+                <FavoriteButtonLoader tourId={tour.id} />
+              </Suspense>
             </div>
 
             <h1 className="font-heading text-[clamp(2.5rem,5vw,4.5rem)] font-bold leading-[1.1] tracking-tight text-white drop-shadow-xl">
