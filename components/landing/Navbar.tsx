@@ -45,9 +45,9 @@ export default function Navbar({
       id="navbar"
       className="fixed z-50 left-1/2 -translate-x-1/2 transition-all duration-700 ease-out"
       style={{
-        top: scrolled ? 16 : 24,
+        top: 24,
         width: "calc(100% - 32px)",
-        maxWidth: scrolled ? "1000px" : "1200px",
+        maxWidth: "1200px",
         borderRadius: 100,
         background: scrolled
           ? "rgba(10, 10, 10, 0.85)"

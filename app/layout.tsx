@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ChatButton } from "@/components/chat/ChatButton";
+import { Providers } from "./providers";
 
 const inter = Inter({
   variable: "--font-heading-var",
@@ -31,7 +32,9 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="antialiased" suppressHydrationWarning>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
         {/* Global AI Travel Assistant — available on every page */}
         <ChatButton />
       </body>
