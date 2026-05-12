@@ -35,7 +35,7 @@ export default function RootLayout({
         <Providers>
           {children}
         </Providers>
-        {/* Global AI Travel Assistant — available on every page */}
+        {/* Global AI Travel Assistant — available on every page ne */}
         <ChatButton />
       </body>
     </html>
