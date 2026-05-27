@@ -1,7 +1,12 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { AdminDataTable, StatusBadge, type Column } from "@/components/admin/AdminDataTable"
+import {
+  AdminDataTable,
+  StatusBadge,
+  type Column,
+  type TableFilter,
+} from "@/components/admin/AdminDataTable"
 import type { RecentTransaction } from "@/data/queries/bookings"
 import { formatCurrency, formatDate } from "@/lib/format"
 import { ArrowUpRight } from "lucide-react"
@@ -44,6 +49,21 @@ const COLUMNS: Column<TxRow>[] = [
   },
 ]
 
+const FILTERS: TableFilter<TxRow>[] = [
+  {
+    key: "status",
+    label: "Trạng thái",
+    allLabel: "Tất cả trạng thái",
+    getValue: (row) => row.status,
+    options: [
+      { label: "Hoàn thành", value: "completed" },
+      { label: "Chờ xử lý", value: "pending" },
+      { label: "Đã hủy", value: "cancelled" },
+      { label: "Không rõ", value: "unknown" },
+    ],
+  },
+]
+
 export function RecentTransactionsTable({ data }: RecentTransactionsTableProps) {
   // AdminDataTable needs id field
   const rows: TxRow[] = data.map((tx) => ({ ...tx, id: tx.bookingId }))
@@ -58,6 +78,7 @@ export function RecentTransactionsTable({ data }: RecentTransactionsTableProps) 
         <AdminDataTable
           data={rows}
           columns={COLUMNS}
+          filters={FILTERS}
           defaultRowsPerPage={10}
           emptyMessage="Chưa có giao dịch nào"
         />

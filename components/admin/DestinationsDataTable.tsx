@@ -2,7 +2,12 @@
 
 import { useState, useTransition } from "react"
 import { ImageIcon, MapPin, Pencil, Plus, Trash2 } from "lucide-react"
-import { AdminDataTable, type Column, type RowAction } from "@/components/admin/AdminDataTable"
+import {
+  AdminDataTable,
+  type Column,
+  type RowAction,
+  type TableFilter,
+} from "@/components/admin/AdminDataTable"
 import { ConfirmDeleteDialog } from "@/components/admin/ConfirmDeleteDialog"
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -81,6 +86,29 @@ const COLUMNS: Column<DestinationRow>[] = [
   },
 ]
 
+const FILTERS: TableFilter<DestinationRow>[] = [
+  {
+    key: "image",
+    label: "Hình ảnh",
+    allLabel: "Tất cả hình ảnh",
+    getValue: (row) => (row.image_url ? "has-image" : "no-image"),
+    options: [
+      { label: "Có ảnh", value: "has-image" },
+      { label: "Chưa có ảnh", value: "no-image" },
+    ],
+  },
+  {
+    key: "tours",
+    label: "Tour",
+    allLabel: "Tất cả tour",
+    getValue: (row) => (row.tourCount > 0 ? "has-tours" : "no-tours"),
+    options: [
+      { label: "Đã có tour", value: "has-tours" },
+      { label: "Chưa có tour", value: "no-tours" },
+    ],
+  },
+]
+
 export function DestinationsDataTable({ data }: { data: DestinationRow[] }) {
   const [mode, setMode] = useState<"closed" | "create" | "edit">("closed")
   const [editing, setEditing] = useState<DestinationRow | null>(null)
@@ -150,7 +178,7 @@ export function DestinationsDataTable({ data }: { data: DestinationRow[] }) {
         </Button>
       </div>
 
-      <AdminDataTable data={data} columns={COLUMNS} actions={actions} />
+      <AdminDataTable data={data} columns={COLUMNS} actions={actions} filters={FILTERS} />
 
       <Dialog open={mode !== "closed"} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">

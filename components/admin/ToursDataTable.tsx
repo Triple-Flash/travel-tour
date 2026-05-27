@@ -2,7 +2,12 @@
 
 import { useState, useTransition } from "react"
 import { Clock, MapPin, Pencil, Plus, Trash2 } from "lucide-react"
-import { AdminDataTable, type Column, type RowAction } from "@/components/admin/AdminDataTable"
+import {
+  AdminDataTable,
+  type Column,
+  type RowAction,
+  type TableFilter,
+} from "@/components/admin/AdminDataTable"
 import { ConfirmDeleteDialog } from "@/components/admin/ConfirmDeleteDialog"
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -132,6 +137,36 @@ export function ToursDataTable({
   const selectedDestinationLabel = selectedDestination
     ? `${selectedDestination.name}, ${selectedDestination.country}`
     : "Chưa chọn"
+  const filters: TableFilter<TourRow>[] = [
+    {
+      key: "destination",
+      label: "Điểm đến",
+      allLabel: "Tất cả điểm đến",
+      getValue: (row) => row.destination_id ?? "none",
+      options: [
+        { label: "Chưa chọn", value: "none" },
+        ...destinations.map((destination) => ({
+          label: `${destination.name}, ${destination.country}`,
+          value: destination.id,
+        })),
+      ],
+    },
+    {
+      key: "capacity",
+      label: "Sức chứa",
+      allLabel: "Tất cả sức chứa",
+      getValue: (row) => {
+        if (row.max_capacity <= 5) return "small"
+        if (row.max_capacity <= 15) return "medium"
+        return "large"
+      },
+      options: [
+        { label: "Nhóm nhỏ (≤ 5)", value: "small" },
+        { label: "Nhóm vừa (6-15)", value: "medium" },
+        { label: "Nhóm lớn (> 15)", value: "large" },
+      ],
+    },
+  ]
 
   function openCreate() {
     setForm(EMPTY_FORM)
@@ -204,7 +239,7 @@ export function ToursDataTable({
         </Button>
       </div>
 
-      <AdminDataTable data={tableData} columns={COLUMNS} actions={actions} />
+      <AdminDataTable data={tableData} columns={COLUMNS} actions={actions} filters={filters} />
 
       <Dialog open={mode !== "closed"} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">

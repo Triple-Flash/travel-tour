@@ -2,7 +2,12 @@
 
 import { useState, useTransition } from "react"
 import { BadgePercent, CalendarClock, Pencil, Plus, Trash2 } from "lucide-react"
-import { AdminDataTable, type Column, type RowAction } from "@/components/admin/AdminDataTable"
+import {
+  AdminDataTable,
+  type Column,
+  type RowAction,
+  type TableFilter,
+} from "@/components/admin/AdminDataTable"
 import { ConfirmDeleteDialog } from "@/components/admin/ConfirmDeleteDialog"
 import { Dialog, DialogContent, DialogFooter, DialogHeader } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -85,6 +90,29 @@ const COLUMNS: Column<VoucherRow>[] = [
   },
 ]
 
+const FILTERS: TableFilter<VoucherRow>[] = [
+  {
+    key: "status",
+    label: "Trạng thái",
+    allLabel: "Tất cả trạng thái",
+    getValue: (row) => (isExpired(row.expiration_date) ? "expired" : "active"),
+    options: [
+      { label: "Đang dùng", value: "active" },
+      { label: "Hết hạn", value: "expired" },
+    ],
+  },
+  {
+    key: "expiration",
+    label: "Thời hạn",
+    allLabel: "Tất cả thời hạn",
+    getValue: (row) => (row.expiration_date ? "dated" : "unlimited"),
+    options: [
+      { label: "Có ngày hết hạn", value: "dated" },
+      { label: "Không giới hạn", value: "unlimited" },
+    ],
+  },
+]
+
 export function VouchersDataTable({ data }: { data: VoucherRow[] }) {
   const [mode, setMode] = useState<"closed" | "create" | "edit">("closed")
   const [editing, setEditing] = useState<VoucherRow | null>(null)
@@ -150,7 +178,7 @@ export function VouchersDataTable({ data }: { data: VoucherRow[] }) {
         </Button>
       </div>
 
-      <AdminDataTable data={data} columns={COLUMNS} actions={actions} />
+      <AdminDataTable data={data} columns={COLUMNS} actions={actions} filters={FILTERS} />
 
       <Dialog open={mode !== "closed"} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent className="max-w-md">

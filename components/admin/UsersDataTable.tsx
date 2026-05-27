@@ -2,10 +2,16 @@
 
 import { useState, useTransition } from "react"
 import { Pencil, Trash2 } from "lucide-react"
-import { AdminDataTable, StatusBadge, type Column, type RowAction } from "@/components/admin/AdminDataTable"
+import {
+  AdminDataTable,
+  StatusBadge,
+  type Column,
+  type RowAction,
+  type TableFilter,
+} from "@/components/admin/AdminDataTable"
 import { ConfirmDeleteDialog } from "@/components/admin/ConfirmDeleteDialog"
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -75,6 +81,29 @@ const COLUMNS: Column<UserRow>[] = [
   },
 ]
 
+const FILTERS: TableFilter<UserRow>[] = [
+  {
+    key: "role",
+    label: "Vai trò",
+    allLabel: "Tất cả vai trò",
+    getValue: (row) => row.role ?? "customer",
+    options: [
+      { label: "Khách hàng", value: "customer" },
+      { label: "Admin", value: "admin" },
+    ],
+  },
+  {
+    key: "bookings",
+    label: "Đơn đặt",
+    allLabel: "Tất cả đơn đặt",
+    getValue: (row) => (row.bookingCount > 0 ? "has-bookings" : "no-bookings"),
+    options: [
+      { label: "Đã có đơn", value: "has-bookings" },
+      { label: "Chưa có đơn", value: "no-bookings" },
+    ],
+  },
+]
+
 interface EditForm { full_name: string; phone_number: string; role: string }
 
 export function UsersDataTable({ data }: { data: UserRow[] }) {
@@ -119,7 +148,7 @@ export function UsersDataTable({ data }: { data: UserRow[] }) {
 
   return (
     <>
-      <AdminDataTable data={data} columns={COLUMNS} actions={actions} />
+      <AdminDataTable data={data} columns={COLUMNS} actions={actions} filters={FILTERS} />
 
       {/* Edit dialog */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
