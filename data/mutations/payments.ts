@@ -6,6 +6,7 @@
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { payos } from "@/lib/payos";
+import { getPublicSiteUrl } from "@/lib/site-url";
 import { ValidationError, NotFoundError, ForbiddenError } from "@/data/errors";
 import {
   CreatePayosPaymentSchema,
@@ -96,7 +97,7 @@ export async function createPayosPayment(
   });
 
   // Create PayOS payment link via SDK
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const siteUrl = getPublicSiteUrl();
   const paymentLinkResponse = await payos.paymentRequests.create({
     orderCode,
     amount: Math.round(total_price), // PayOS requires integer amount in VND
@@ -235,7 +236,7 @@ export async function repayBookingPayment(bookingId: string): Promise<RepayResul
   const newOrderCode = Date.now() % 2_147_483_647;
   const totalPrice = Number(booking.payments.amount);
   const tourTitle = booking.tours?.title ?? "Tour";
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const siteUrl = getPublicSiteUrl();
 
   // Create a fresh PayOS payment link (no new DB booking/payment record)
   const paymentLinkResponse = await payos.paymentRequests.create({
