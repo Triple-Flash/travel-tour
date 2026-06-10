@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell } from "lucide-react"
+import { Bell, LogOut } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,12 +14,15 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "@/components/admin/ThemeToggle"
 import { usePathname } from "next/navigation"
+import { signOut } from "@/app/(auth)/login/actions"
 import type { SessionUser } from "@/lib/auth"
 
 const breadcrumbs: Record<string, string> = {
   "/admin/dashboard": "Thống Kê",
   "/admin/bookings":  "Đơn Hàng",
   "/admin/tours":     "Tours",
+  "/admin/destinations":     "Điểm Đến",
+  "/admin/vouchers":     "Vouchers",
   "/admin/users":     "Khách hàng",
   "/admin/reviews":   "Đánh giá",
 }
@@ -51,9 +54,7 @@ export function AdminTopbar({ user }: AdminTopbarProps) {
       <div className="flex items-center gap-1">
         <ThemeToggle />
 
-        <Button variant="ghost" size="icon" aria-label="Thông báo">
-          <Bell className="h-4 w-4" />
-        </Button>
+    
 
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -79,10 +80,11 @@ export function AdminTopbar({ user }: AdminTopbarProps) {
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Hồ sơ</DropdownMenuItem>
-            <DropdownMenuItem>Cài đặt</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive focus:text-destructive">
+            <DropdownMenuItem 
+              className="text-destructive focus:text-destructive"
+              onClick={() => signOut()}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
               Đăng xuất
             </DropdownMenuItem>
           </DropdownMenuContent>
