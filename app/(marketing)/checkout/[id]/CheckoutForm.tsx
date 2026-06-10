@@ -33,6 +33,7 @@ interface CheckoutFormProps {
   total: number;
   userFullName: string;
   userEmail: string;
+  userPhone: string;
 }
 
 function formatVND(price: number): string {
@@ -49,10 +50,11 @@ export default function CheckoutForm({
   total,
   userFullName,
   userEmail,
+  userPhone,
 }: CheckoutFormProps) {
   const [name, setName] = useState(userFullName);
   const [email, setEmail] = useState(userEmail);
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(userPhone);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

@@ -27,10 +27,10 @@ export async function createReview(
 
   const { tour_id, rating, comment } = parsed.data;
 
-  // Verify the tour exists
+  // Verify the tour exists and fetch its duration for eligibility check
   const tour = await db.tours.findUnique({
     where: { id: tour_id },
-    select: { id: true },
+    select: { id: true, duration: true },
   });
   if (!tour) throw new NotFoundError("Tour", tour_id);
 
@@ -43,10 +43,25 @@ export async function createReview(
         payment_status: "completed",
       },
     },
-    select: { id: true },
+    select: { id: true, booking_date: true },
   });
   if (!successfulBooking) {
     throw new ForbiddenError("You can only review tours you have paid for successfully.");
+  }
+
+  // Check that the tour has been completed before allowing a rating
+  if (successfulBooking.booking_date) {
+    const completionDate = new Date(successfulBooking.booking_date);
+    completionDate.setDate(completionDate.getDate() + tour.duration);
+    const now = new Date();
+
+    if (now < completionDate) {
+      throw new ForbiddenError(
+        "Bạn có thể đánh giá tour này từ ngày " +
+          completionDate.toLocaleDateString("vi-VN") +
+          ". Hãy quay lại sau khi hoàn thành chuyến đi nhé!"
+      );
+    }
   }
 
   // Prevent duplicate reviews

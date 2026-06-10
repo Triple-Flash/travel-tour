@@ -1,5 +1,6 @@
 import { getTourById } from "@/data/queries/tours";
 import { getSession } from "@/lib/auth";
+import { getMyProfile } from "@/data/queries/users";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import { ArrowLeft } from "lucide-react";
@@ -26,6 +27,7 @@ export default async function CheckoutPage({
     notFound();
   }
   const session = await getSession();
+  const profile = session ? await getMyProfile().catch(() => null) : null;
 
   const image = tour.destination?.image_url || tour.images[0]?.image_url || "/images/halong.png";
   const guests = parseInt(resolvedSearchParams.guests || "1", 10);
@@ -74,6 +76,7 @@ export default async function CheckoutPage({
             total={total}
             userFullName={session?.full_name || ""}
             userEmail={session?.email || ""}
+            userPhone={profile?.phone_number ?? ""}
           />
         </div>
       </main>

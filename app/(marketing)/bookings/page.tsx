@@ -212,10 +212,23 @@ export default async function BookingsPage() {
                               <RepayButton bookingId={booking.id} />
                             )}
                             {booking.status === 'confirmed' && booking.payment?.payment_status === 'completed' && booking.tour_id && (
-                              <BookingReviewForm
-                                tourId={booking.tour_id}
-                                existingReview={booking.user_review}
-                              />
+                              booking.can_rate ? (
+                                <BookingReviewForm
+                                  tourId={booking.tour_id}
+                                  existingReview={booking.user_review}
+                                />
+                              ) : booking.user_review ? (
+                                /* Has a review, show it */
+                                <BookingReviewForm
+                                  tourId={booking.tour_id}
+                                  existingReview={booking.user_review}
+                                />
+                              ) : (
+                                /* Tour not yet complete — show message instead of button */
+                                <div className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs text-white/40">
+                                  Bạn có thể đánh giá sau khi tour kết thúc
+                                </div>
+                              )
                             )}
                             <Link
                               href={`/tours/${booking.tour_id}`}

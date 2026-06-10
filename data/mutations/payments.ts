@@ -139,6 +139,14 @@ export async function confirmPayosPayment(
 
     if (!payment) throw new NotFoundError("Payment", `orderCode:${orderCode}`);
 
+    // Fetch booking to get number_of_people and tour_id for capacity deduction
+    const booking = payment.booking_id
+      ? await tx.bookings.findUnique({
+          where: { id: payment.booking_id },
+          select: { id: true, tour_id: true, number_of_people: true },
+        })
+      : null;
+
     await tx.payments.update({
       where: { id: payment.id },
       data: {
@@ -148,9 +156,29 @@ export async function confirmPayosPayment(
       },
     });
 
-    if (payment.booking_id) {
+    if (booking) {
+      // Atomically check and deduct tour capacity
+      if (booking.tour_id) {
+        const remaining = await tx.tours.update({
+          where: { id: booking.tour_id },
+          data: { max_capacity: { decrement: booking.number_of_people } },
+          select: { max_capacity: true },
+        });
+
+        if (remaining.max_capacity < 0) {
+          // Rollback: restore capacity and reject
+          await tx.tours.update({
+            where: { id: booking.tour_id },
+            data: { max_capacity: { increment: booking.number_of_people } },
+          });
+          throw new ValidationError(
+            "Rất tiếc, tour này đã hết chỗ trống. Vui lòng chọn tour khác."
+          );
+        }
+      }
+
       await tx.bookings.update({
-        where: { id: payment.booking_id },
+        where: { id: booking.id },
         data: { status: "confirmed" },
       });
     }
@@ -169,14 +197,30 @@ export async function cancelPayosPayment(orderCode: number): Promise<void> {
 
     if (!payment) throw new NotFoundError("Payment", `orderCode:${orderCode}`);
 
+    // Fetch booking to restore tour capacity on cancellation
+    const booking = payment.booking_id
+      ? await tx.bookings.findUnique({
+          where: { id: payment.booking_id },
+          select: { id: true, tour_id: true, number_of_people: true, status: true },
+        })
+      : null;
+
     await tx.payments.update({
       where: { id: payment.id },
       data: { payment_status: "cancelled" },
     });
 
-    if (payment.booking_id) {
+    if (booking) {
+      // Restore tour capacity (only if booking was previously confirmed)
+      if (booking.tour_id && booking.status === "confirmed") {
+        await tx.tours.update({
+          where: { id: booking.tour_id },
+          data: { max_capacity: { increment: booking.number_of_people } },
+        });
+      }
+
       await tx.bookings.update({
-        where: { id: payment.booking_id },
+        where: { id: booking.id },
         data: { status: "cancelled" },
       });
     }

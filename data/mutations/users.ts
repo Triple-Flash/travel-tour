@@ -8,6 +8,7 @@ import { requireAuth } from "@/lib/auth";
 import { ValidationError, NotFoundError } from "@/data/errors";
 import { UpdateUserSchema, type UpdateUserInput } from "@/data/dto/users";
 import type { UserProfile } from "@/data/queries/users";
+import { normalizePhoneNumber } from "@/lib/utils";
 
 /**
  * Updates the current user's profile (full_name, phone_number).
@@ -22,6 +23,23 @@ export async function updateMyProfile(input: UpdateUserInput): Promise<UserProfi
     throw new ValidationError(parsed.error.issues.map((i) => i.message).join(", "));
   }
 
+  // Phone number must be unique across all users
+  const normalizedPhone = normalizePhoneNumber(parsed.data.phone_number);
+  if (normalizedPhone) {
+    const existing = await db.users.findFirst({
+      where: {
+        phone_number: normalizedPhone,
+        id: { not: user.id },
+      },
+      select: { id: true },
+    });
+    if (existing) {
+      throw new ValidationError(
+        "Số điện thoại này đã được sử dụng bởi tài khoản khác."
+      );
+    }
+  }
+
   const updated = await db.users.upsert({
     where: { id: user.id },
     update: {
@@ -29,15 +47,14 @@ export async function updateMyProfile(input: UpdateUserInput): Promise<UserProfi
         full_name: parsed.data.full_name,
       }),
       ...(parsed.data.phone_number !== undefined && {
-        phone_number: parsed.data.phone_number,
+        phone_number: normalizedPhone ?? null,
       }),
     },
     create: {
       id: user.id,
       email: user.email,
       full_name: parsed.data.full_name ?? user.full_name,
-      phone_number:
-        parsed.data.phone_number !== undefined ? parsed.data.phone_number : null,
+      phone_number: normalizedPhone ?? null,
       password_hash: "OAUTH_GOOGLE",
       role: user.role,
     },

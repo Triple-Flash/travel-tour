@@ -37,6 +37,8 @@ export interface Booking {
     rating: number | null;
     comment: string | null;
   } | null;
+  /** Whether the current user is eligible to rate this tour. */
+  can_rate: boolean;
 }
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
@@ -291,6 +293,20 @@ type RawBooking = {
 };
 
 function mapBooking(b: RawBooking): Booking {
+  // Compute whether the user can rate this tour:
+  // - Must be confirmed with completed payment
+  // - Must not already have a review
+  // - Tour must have ended (booking_date + duration <= today)
+  const confirmed = b.status === "confirmed";
+  const paid = b.payments?.payment_status === "completed";
+  const notReviewed = !b.tours?.reviews?.[0];
+  let tourEnded = false;
+  if (b.booking_date && b.tours?.duration) {
+    const completionDate = new Date(b.booking_date);
+    completionDate.setDate(completionDate.getDate() + b.tours.duration);
+    tourEnded = new Date() >= completionDate;
+  }
+
   return {
     id: b.id,
     user_id: b.user_id,
@@ -325,6 +341,7 @@ function mapBooking(b: RawBooking): Booking {
           comment: b.tours.reviews[0].comment,
         }
       : null,
+    can_rate: confirmed && paid && notReviewed && tourEnded,
   };
 }
 

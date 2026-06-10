@@ -110,7 +110,7 @@ model users {
   email         String          @unique
   password_hash String
   role          String?         @default("customer")
-  phone_number  String?
+  phone_number  String?       @unique
   created_at    DateTime?       @default(now()) @db.Timestamp(6)
   bookings      bookings[]
   reviews       reviews[]
