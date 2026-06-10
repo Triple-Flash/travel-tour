@@ -38,10 +38,28 @@ async function getAllTours() {
   }))
 }
 
+async function getDestinationOptions() {
+  const user = await getSession()
+  if (!user || user.role !== "admin") throw new ForbiddenError()
+
+  return db.destinations.findMany({
+    orderBy: [{ country: "asc" }, { name: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      country: true,
+    },
+  })
+}
+
 export default async function AdminToursPage() {
   let tours
+  let destinations
   try {
-    tours = await getAllTours()
+    ;[tours, destinations] = await Promise.all([
+      getAllTours(),
+      getDestinationOptions(),
+    ])
   } catch {
     redirect("/")
   }
@@ -54,7 +72,7 @@ export default async function AdminToursPage() {
       </div>
 
       <Card className="overflow-hidden p-0">
-        <ToursDataTable data={tours} />
+        <ToursDataTable data={tours} destinations={destinations} />
       </Card>
     </div>
   )

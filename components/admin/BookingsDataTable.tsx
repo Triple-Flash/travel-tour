@@ -2,16 +2,23 @@
 
 import { useState } from "react"
 import { Pencil, Trash2 } from "lucide-react"
-import { AdminDataTable, StatusBadge, type Column, type RowAction } from "@/components/admin/AdminDataTable"
+import {
+  AdminDataTable,
+  StatusBadge,
+  type Column,
+  type RowAction,
+  type TableFilter,
+} from "@/components/admin/AdminDataTable"
 import { ConfirmDeleteDialog } from "@/components/admin/ConfirmDeleteDialog"
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { deleteBooking, updateBookingStatus } from "@/app/admin/bookings/actions"
 import { formatCurrency, formatDate } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
 export interface BookingRow {
   id: string
@@ -22,6 +29,40 @@ export interface BookingRow {
   status: string
   paymentStatus: string
   date: Date | null
+}
+
+const PAYMENT_STATUS_CONFIG: Record<string, { label: string; className: string }> = {
+  pending: {
+    label: "Chờ thanh toán",
+    className: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400",
+  },
+  completed: {
+    label: "Đã thanh toán",
+    className: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400",
+  },
+  cancelled: {
+    label: "Đã hủy",
+    className: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400",
+  },
+  unknown: {
+    label: "Chưa có thông tin",
+    className: "bg-gray-100 text-gray-500 border-gray-200",
+  },
+}
+
+function PaymentStatusBadge({ status }: { status: string }) {
+  const config = PAYMENT_STATUS_CONFIG[status] ?? PAYMENT_STATUS_CONFIG.unknown
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium",
+        config.className
+      )}
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      {config.label}
+    </span>
+  )
 }
 
 const COLUMNS: Column<BookingRow>[] = [
@@ -63,13 +104,41 @@ const COLUMNS: Column<BookingRow>[] = [
     key: "payment",
     header: "Thanh toán",
     searchValue: (r) => r.paymentStatus,
-    render: (r) => <StatusBadge status={r.paymentStatus} />,
+    render: (r) => <PaymentStatusBadge status={r.paymentStatus} />,
   },
   {
     key: "date",
     header: "Ngày đặt",
     className: "pr-4",
     render: (r) => <span className="tabular-nums text-muted-foreground">{formatDate(r.date)}</span>,
+  },
+]
+
+const FILTERS: TableFilter<BookingRow>[] = [
+  {
+    key: "status",
+    label: "Trạng thái",
+    allLabel: "Tất cả trạng thái",
+    getValue: (row) => row.status,
+    options: [
+      { label: "Chờ xử lý", value: "pending" },
+      { label: "Xác nhận", value: "confirmed" },
+      { label: "Hoàn thành", value: "completed" },
+      { label: "Đã hủy", value: "cancelled" },
+      { label: "Không rõ", value: "unknown" },
+    ],
+  },
+  {
+    key: "payment",
+    label: "Thanh toán",
+    allLabel: "Tất cả thanh toán",
+    getValue: (row) => row.paymentStatus,
+    options: [
+      { label: "Chờ thanh toán", value: "pending" },
+      { label: "Đã thanh toán", value: "completed" },
+      { label: "Đã hủy", value: "cancelled" },
+      { label: "Chưa có thông tin", value: "unknown" },
+    ],
   },
 ]
 
@@ -94,7 +163,7 @@ export function BookingsDataTable({ data }: { data: BookingRow[] }) {
 
   return (
     <>
-      <AdminDataTable data={data} columns={COLUMNS} actions={actions} />
+      <AdminDataTable data={data} columns={COLUMNS} actions={actions} filters={FILTERS} />
 
       {/* Edit status dialog */}
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>

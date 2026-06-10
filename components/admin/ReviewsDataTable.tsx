@@ -1,7 +1,12 @@
 "use client"
 
 import { Trash2, Star } from "lucide-react"
-import { AdminDataTable, type Column, type RowAction } from "@/components/admin/AdminDataTable"
+import {
+  AdminDataTable,
+  type Column,
+  type RowAction,
+  type TableFilter,
+} from "@/components/admin/AdminDataTable"
 import { ConfirmDeleteDialog } from "@/components/admin/ConfirmDeleteDialog"
 import { useState } from "react"
 import { deleteReview } from "@/app/admin/reviews/actions"
@@ -66,6 +71,33 @@ const COLUMNS: Column<ReviewRow>[] = [
   },
 ]
 
+const FILTERS: TableFilter<ReviewRow>[] = [
+  {
+    key: "rating",
+    label: "Điểm",
+    allLabel: "Tất cả điểm",
+    getValue: (row) => String(row.rating ?? 0),
+    options: [
+      { label: "5 sao", value: "5" },
+      { label: "4 sao", value: "4" },
+      { label: "3 sao", value: "3" },
+      { label: "2 sao", value: "2" },
+      { label: "1 sao", value: "1" },
+      { label: "Chưa chấm", value: "0" },
+    ],
+  },
+  {
+    key: "comment",
+    label: "Nhận xét",
+    allLabel: "Tất cả nhận xét",
+    getValue: (row) => (row.comment ? "has-comment" : "no-comment"),
+    options: [
+      { label: "Có nhận xét", value: "has-comment" },
+      { label: "Không có nhận xét", value: "no-comment" },
+    ],
+  },
+]
+
 export function ReviewsDataTable({ data }: { data: ReviewRow[] }) {
   const [deleting, setDeleting] = useState<ReviewRow | null>(null)
 
@@ -80,7 +112,7 @@ export function ReviewsDataTable({ data }: { data: ReviewRow[] }) {
 
   return (
     <>
-      <AdminDataTable data={data} columns={COLUMNS} actions={actions} />
+      <AdminDataTable data={data} columns={COLUMNS} actions={actions} filters={FILTERS} />
       <ConfirmDeleteDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
