@@ -5,7 +5,7 @@
  * Server Actions for the PayOS checkout flow.
  * Calls data/mutations/payments and data/queries/promotions — no direct DB access.
  */
-import { createPayosPayment } from "@/data/mutations/payments";
+import { createPayosPayment, cancelExpiredPayments } from "@/data/mutations/payments";
 import { getPromotionByCode } from "@/data/queries/promotions";
 import { AuthError } from "@/lib/auth";
 import { ValidationError, NotFoundError, ForbiddenError } from "@/data/errors";
@@ -23,6 +23,9 @@ export async function createPayosCheckoutAction(
   input: CreatePayosPaymentInput
 ): Promise<ActionResult<{ checkoutUrl: string }>> {
   try {
+    // Clean up any stale locks before attempting a new one
+    await cancelExpiredPayments(5);
+
     const result = await createPayosPayment(input);
     return { success: true, data: { checkoutUrl: result.checkoutUrl } };
   } catch (err) {

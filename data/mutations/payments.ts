@@ -8,6 +8,7 @@ import { requireAuth } from "@/lib/auth";
 import { payos } from "@/lib/payos";
 import { getPublicSiteUrl } from "@/lib/site-url";
 import { ValidationError, NotFoundError, ForbiddenError } from "@/data/errors";
+import { randomInt } from "crypto";
 import {
   CreatePayosPaymentSchema,
   type CreatePayosPaymentInput,
@@ -26,7 +27,13 @@ export interface PayosPaymentResult {
 
 /**
  * Creates a booking + payment record, then creates a PayOS payment link.
- * Returns the checkout URL for the client to redirect to.
+ *
+ * CONCURRENCY: Atomically decrements tour max_capacity inside a transaction.
+ * If the lock fails (not enough capacity), the caller is rejected BEFORE
+ * any payment link is created — no charge, no refund needed.
+ *
+ * The lock is held by the "pending" booking. If the user abandons checkout,
+ * stale locks are cleaned up by cancelExpiredPayments() (5-min TTL).
  */
 export async function createPayosPayment(
   input: CreatePayosPaymentInput
@@ -50,25 +57,46 @@ export async function createPayosPayment(
     buyer_phone,
   } = parsed.data;
 
-  // Generate a unique order code (PayOS requires a positive integer)
-  const orderCode = Date.now() % 2147483647; // Keep within safe int range
+  // Generate a cryptographically unique order code (PayOS requires a positive integer).
+  // randomInt avoids same-millisecond collisions that Date.now() would have.
+  const orderCode = randomInt(1, 2_147_483_647);
 
-  // Create booking + payment in a transaction
+  // ── Step 1: Atomically lock the slot ──────────────────────────────────────
+  // Uses an atomic conditional UPDATE — the WHERE max_capacity >= N clause
+  // and the SET decrement happen in a single statement. Postgres serializes
+  // writes, so only ONE concurrent transaction sees result.count === 1.
+  // If the lock fails (not enough capacity), the caller is rejected BEFORE
+  // any payment link is created — no charge, no refund needed.
   const result = await db.$transaction(async (tx) => {
-    // Validate tour exists
-    const tour = await tx.tours.findUnique({
-      where: { id: tour_id },
-      select: { id: true, title: true, max_capacity: true },
+    // Atomic lock: "give me N seats IF at least N remain"
+    const locked = await tx.tours.updateMany({
+      where: { id: tour_id, max_capacity: { gte: number_of_people } },
+      data: { max_capacity: { decrement: number_of_people } },
     });
-    if (!tour) throw new NotFoundError("Tour", tour_id);
 
-    if (number_of_people > tour.max_capacity) {
+    if (locked.count === 0) {
+      // Could be not found OR not enough capacity — distinguish with a read
+      const tour = await tx.tours.findUnique({
+        where: { id: tour_id },
+        select: { id: true, title: true, max_capacity: true },
+      });
+      if (!tour) throw new NotFoundError("Tour", tour_id);
+
       throw new ValidationError(
-        `Tour này chỉ cho phép tối đa ${tour.max_capacity} người.`
+        "Rất tiếc, tour này vừa được người khác đặt trước. " +
+          "Bạn chưa bị trừ tiền. Bạn có muốn khám phá các tour " +
+          "hoặc ngày khởi hành khác không?"
       );
     }
 
-    // Create booking
+    // Lock acquired — get tour title for the PayOS description
+    const tour = await tx.tours.findUnique({
+      where: { id: tour_id },
+      select: { title: true },
+    });
+    if (!tour) throw new NotFoundError("Tour", tour_id);
+
+    // Create pending booking (holds the lock)
     const booking = await tx.bookings.create({
       data: {
         user_id: user.id,
@@ -81,7 +109,7 @@ export async function createPayosPayment(
       select: { id: true },
     });
 
-    // Create payment record
+    // Create pending payment record
     const payment = await tx.payments.create({
       data: {
         booking_id: booking.id,
@@ -96,11 +124,11 @@ export async function createPayosPayment(
     return { bookingId: booking.id, paymentId: payment.id, tourTitle: tour.title };
   });
 
-  // Create PayOS payment link via SDK
+  // ── Step 2: Create PayOS payment link (only for the lock holder) ────────
   const siteUrl = getPublicSiteUrl();
   const paymentLinkResponse = await payos.paymentRequests.create({
     orderCode,
-    amount: Math.round(total_price), // PayOS requires integer amount in VND
+    amount: Math.round(total_price),
     description: `Tour: ${result.tourTitle}`.slice(0, 25),
     buyerName: buyer_name,
     buyerEmail: buyer_email,
@@ -126,7 +154,8 @@ export async function createPayosPayment(
 
 /**
  * Confirms a PayOS payment after webhook callback.
- * Updates both payment status and booking status.
+ * The capacity lock was already acquired in createPayosPayment,
+ * so we only need to mark the booking as confirmed.
  */
 export async function confirmPayosPayment(
   orderCode: number,
@@ -135,18 +164,13 @@ export async function confirmPayosPayment(
   await db.$transaction(async (tx) => {
     const payment = await tx.payments.findUnique({
       where: { payos_order_code: orderCode },
-      select: { id: true, booking_id: true },
+      select: { id: true, booking_id: true, payment_status: true },
     });
 
     if (!payment) throw new NotFoundError("Payment", `orderCode:${orderCode}`);
 
-    // Fetch booking to get number_of_people and tour_id for capacity deduction
-    const booking = payment.booking_id
-      ? await tx.bookings.findUnique({
-          where: { id: payment.booking_id },
-          select: { id: true, tour_id: true, number_of_people: true },
-        })
-      : null;
+    // Idempotent: if already completed, skip (don't double-update)
+    if (payment.payment_status === "completed") return;
 
     await tx.payments.update({
       where: { id: payment.id },
@@ -157,29 +181,14 @@ export async function confirmPayosPayment(
       },
     });
 
-    if (booking) {
-      // Atomically check and deduct tour capacity
-      if (booking.tour_id) {
-        const remaining = await tx.tours.update({
-          where: { id: booking.tour_id },
-          data: { max_capacity: { decrement: booking.number_of_people } },
-          select: { max_capacity: true },
-        });
-
-        if (remaining.max_capacity < 0) {
-          // Rollback: restore capacity and reject
-          await tx.tours.update({
-            where: { id: booking.tour_id },
-            data: { max_capacity: { increment: booking.number_of_people } },
-          });
-          throw new ValidationError(
-            "Rất tiếc, tour này đã hết chỗ trống. Vui lòng chọn tour khác."
-          );
-        }
-      }
-
-      await tx.bookings.update({
-        where: { id: booking.id },
+    if (payment.booking_id) {
+      // Only confirm if the booking is still pending (lock hasn't expired)
+      // updateMany is atomic — two concurrent webhooks cannot double-confirm
+      await tx.bookings.updateMany({
+        where: {
+          id: payment.booking_id,
+          status: "pending",
+        },
         data: { status: "confirmed" },
       });
     }
@@ -193,37 +202,46 @@ export async function cancelPayosPayment(orderCode: number): Promise<void> {
   await db.$transaction(async (tx) => {
     const payment = await tx.payments.findUnique({
       where: { payos_order_code: orderCode },
-      select: { id: true, booking_id: true },
+      select: { id: true, booking_id: true, payment_status: true },
     });
 
     if (!payment) throw new NotFoundError("Payment", `orderCode:${orderCode}`);
 
-    // Fetch booking to restore tour capacity on cancellation
-    const booking = payment.booking_id
-      ? await tx.bookings.findUnique({
-          where: { id: payment.booking_id },
-          select: { id: true, tour_id: true, number_of_people: true, status: true },
-        })
-      : null;
+    // Idempotent: if already cancelled, skip
+    if (payment.payment_status === "cancelled") return;
 
+    // Mark payment cancelled
     await tx.payments.update({
       where: { id: payment.id },
       data: { payment_status: "cancelled" },
     });
 
-    if (booking) {
-      // Restore tour capacity (only if booking was previously confirmed)
-      if (booking.tour_id && booking.status === "confirmed") {
-        await tx.tours.update({
-          where: { id: booking.tour_id },
-          data: { max_capacity: { increment: booking.number_of_people } },
-        });
-      }
-
-      await tx.bookings.update({
-        where: { id: booking.id },
+    if (payment.booking_id) {
+      // Atomically cancel the booking ONLY if it's still pending or confirmed
+      // (those are the two states that hold capacity). If it's already
+      // cancelled, updateMany touches 0 rows and we skip the capacity restore.
+      const result = await tx.bookings.updateMany({
+        where: {
+          id: payment.booking_id,
+          status: { in: ["pending", "confirmed"] },
+        },
         data: { status: "cancelled" },
       });
+
+      if (result.count > 0) {
+        // Only restore capacity if WE were the ones who cancelled it
+        const booking = await tx.bookings.findUnique({
+          where: { id: payment.booking_id },
+          select: { tour_id: true, number_of_people: true },
+        });
+
+        if (booking?.tour_id && booking.number_of_people > 0) {
+          await tx.tours.update({
+            where: { id: booking.tour_id },
+            data: { max_capacity: { increment: booking.number_of_people } },
+          });
+        }
+      }
     }
   });
 }
@@ -277,7 +295,7 @@ export async function repayBookingPayment(bookingId: string): Promise<RepayResul
   }
 
   // New order code for PayOS (each PayOS request must be unique)
-  const newOrderCode = Date.now() % 2_147_483_647;
+  const newOrderCode = randomInt(1, 2_147_483_647);
   const totalPrice = Number(booking.payments.amount);
   const tourTitle = booking.tours?.title ?? "Tour";
   const siteUrl = getPublicSiteUrl();
@@ -308,5 +326,62 @@ export async function repayBookingPayment(bookingId: string): Promise<RepayResul
     checkoutUrl: paymentLinkResponse.checkoutUrl,
     orderCode: newOrderCode,
   };
+}
+
+// ─── Stale lock cleanup ──────────────────────────────────────────────────────
+
+/**
+ * Releases capacity held by abandoned pending bookings older than `ttlMinutes`.
+ *
+ * Call this:
+ *   - from the checkout page before creating a new payos link (pre-clean)
+ *   - from a cron / scheduled task for thorough cleanup
+ */
+export async function cancelExpiredPayments(ttlMinutes = 5): Promise<number> {
+  const cutoff = new Date(Date.now() - ttlMinutes * 60 * 1000);
+
+  // First, find the IDs of expired pending bookings so we know exactly
+  // which ones we're about to cancel (avoids double-restore with
+  // cancelPayosPayment for bookings cancelled via other paths).
+  const expired = await db.bookings.findMany({
+    where: {
+      status: "pending",
+      created_at: { lt: cutoff },
+      payments: { payment_status: "pending" },
+      tour_id: { not: null },
+      number_of_people: { gt: 0 },
+    },
+    select: { id: true, tour_id: true, number_of_people: true },
+  });
+
+  if (expired.length === 0) return 0;
+
+  const expiredIds = expired.map((b) => b.id);
+
+  // Atomically mark ALL expired bookings as cancelled in one statement.
+  // If a concurrent run already flipped some, those rows are excluded.
+  await db.bookings.updateMany({
+    where: { id: { in: expiredIds }, status: "pending" },
+    data: { status: "cancelled" },
+  });
+
+  // Cancel associated payment records
+  await db.payments.updateMany({
+    where: { booking_id: { in: expiredIds }, payment_status: "pending" },
+    data: { payment_status: "cancelled" },
+  });
+
+  // Restore capacity for each expired booking we claimed.
+  // Using the pre-collected IDs avoids touching bookings cancelled
+  // via cancelPayosPayment (which already restored capacity).
+  for (const booking of expired) {
+    if (!booking.tour_id) continue;
+    await db.tours.updateMany({
+      where: { id: booking.tour_id },
+      data: { max_capacity: { increment: booking.number_of_people } },
+    });
+  }
+
+  return expired.length;
 }
 

@@ -8,6 +8,9 @@ import ReviewsSection from "@/components/landing/ReviewsSection";
 import PlanMyTripSection from "@/components/landing/PlanMyTripSection";
 import Footer from "@/components/landing/Footer";
 
+// Ensure fresh tour capacity data after bookings/payments
+export const dynamic = "force-dynamic";
+
 // ─── Async data-fetching components (streamed via Suspense) ──────────────────
 
 async function DestinationsLoader() {

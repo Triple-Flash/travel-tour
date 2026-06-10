@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import { XCircle, ArrowRight, Home } from "lucide-react";
+import { cancelPayosPayment } from "@/data/mutations/payments";
 
 export default async function CheckoutCancelPage({
   searchParams,
@@ -12,6 +13,17 @@ export default async function CheckoutCancelPage({
   const resolvedSearchParams = await searchParams;
   const session = await getSession();
   const orderCode = resolvedSearchParams.orderCode || "N/A";
+
+  // When a user cancels on PayOS's side, we must release the capacity lock.
+  // PayOS may not send a webhook for user-initiated cancellations, so we
+  // handle it here on the return-URL page.
+  if (orderCode !== "N/A") {
+    try {
+      await cancelPayosPayment(Number(orderCode));
+    } catch (err) {
+      console.error("[CancelPage] Failed to cancel payment:", err);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-cyan-500/30">

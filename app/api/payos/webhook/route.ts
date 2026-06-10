@@ -4,8 +4,9 @@
  * Receives payment confirmations from PayOS and updates booking/payment status.
  */
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { payos } from "@/lib/payos";
-import { confirmPayosPayment, cancelPayosPayment } from "@/data/mutations/payments";
+import { confirmPayosPayment, cancelPayosPayment, cancelExpiredPayments } from "@/data/mutations/payments";
 import type { Webhook } from "@payos/node/lib/resources/webhooks/webhook";
 
 export async function POST(request: NextRequest) {
@@ -31,9 +32,17 @@ export async function POST(request: NextRequest) {
     // code "00" means success in PayOS
     if (code === "00") {
       await confirmPayosPayment(orderCode, reference ?? undefined);
+      // Clean up stale locks now that capacity has just been consumed for real.
+      // This releases abandoned pending bookings from other users on the same tour.
+      const released = await cancelExpiredPayments(5);
+      if (released > 0) {
+        console.log(`[PayOS Webhook] Released ${released} expired lock(s)`);
+      }
+      revalidatePath("/", "layout");
       console.log(`[PayOS Webhook] Payment confirmed for orderCode=${orderCode}`);
     } else {
       await cancelPayosPayment(orderCode);
+      revalidatePath("/", "layout");
       console.log(`[PayOS Webhook] Payment cancelled for orderCode=${orderCode}`);
     }
 

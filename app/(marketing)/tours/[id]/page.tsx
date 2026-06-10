@@ -17,6 +17,9 @@ import Footer from "@/components/landing/Footer";
 import FavoriteTourButton from "./FavoriteTourButton";
 import BookingForm from "./BookingForm";
 
+// Ensure fresh data after webhook updates (capacity changes on payment)
+export const dynamic = "force-dynamic";
+
 async function NavbarLoader() {
   const { getSession } = await import("@/lib/auth");
   const session = await getSession();
